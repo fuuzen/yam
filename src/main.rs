@@ -2,6 +2,13 @@ use lalrpop_util::lalrpop_mod;
 use std::env::args;
 use std::fs::read_to_string;
 use std::io::Result;
+use midi_file::MidiFile;
+use midi_file::core::{Channel, Clocks, DurationName, NoteNumber, Velocity};
+use midi_file::file::{QuartersPerMinute, Track};
+
+// 让 rust-analyzer 帮忙语法检查 ast.rs 文件
+mod ast;
+use ast::CompUnit;
 
 // 引用 lalrpop 生成的解析器，模块名是 .lalrpop 文件的名字
 lalrpop_mod!(yam);
@@ -19,9 +26,65 @@ fn main() -> Result<()> {
   let input = read_to_string(input)?;
 
   // 调用 lalrpop 生成的 parser 解析输入文件
-  let ast = yam::CompUnitParser::new().parse(&input).unwrap();
+  let ast: CompUnit = yam::CompUnitParser::new().parse(&input).unwrap();
 
   // 输出解析得到的 AST
   println!("{:#?}", ast);
+
+  let mut midi_file = MidiFile::new();
+  let mut track = Track::default();
+  track.push_tempo(
+    0,
+    QuartersPerMinute::new(ast.tempo as u8)
+  ).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+  
+  track.push_time_signature(
+    0,
+    ast.time_signature.numerator as u8,
+    match ast.time_signature.denominator {
+      1 => DurationName::Whole,
+      2 => DurationName::Half,
+      4 => DurationName::Quarter,
+      8 => DurationName::Eighth,
+      16 => DurationName::Sixteenth,
+      32 => DurationName::D32,
+      64 => DurationName::D64,
+      128 => DurationName::D128,
+      256 => DurationName::D256,
+      512 => DurationName::D512,
+      1024 => DurationName::D1024,
+      _ => DurationName::Quarter, // TODO handle parse err
+  },
+    Clocks::Quarter
+  ).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+
+  for (i, play) in ast.func_def.block.stmts.iter().enumerate() {
+    let note_number = NoteNumber::new(60 + play.pitch as u8);
+    let channel = Channel::new(0);
+    let velocity = Velocity::new(72);
+    let tick = 4 * 1024 / ast.time_signature.denominator;  // 默认 Divison (PPQ) = 1024
+    let on_delta_time = if i == 0 {
+      (tick * play.start) as u32  
+    } else {
+      (ast.func_def.block.stmts[i].start - ast.func_def.block.stmts[i-1].end) as u32
+    };
+    let off_delta_time = (tick * (play.end - play.start)) as u32;
+    track.push_note_on(
+      on_delta_time,  // 紧接着上一个事件
+      channel,
+      note_number,
+      velocity
+    ).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+    track.push_note_off(
+      off_delta_time,
+      channel,
+      note_number,
+      velocity
+    ).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+  }
+
+  midi_file.push_track(track)
+    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+  midi_file.save(output).unwrap();
   Ok(())
 }

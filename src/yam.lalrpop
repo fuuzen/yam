@@ -1,3 +1,5 @@
+use crate::ast::{*};
+
 // lalrpop 里的约定
 grammar;
 
@@ -11,22 +13,45 @@ match {
   _
 }
 
-// 定义 CompUnit, 其返回值类型为 String
-// parser 在解析完成后的行为是返回 FuncDef 的值
-pub CompUnit: String = <func_def: FuncDef> => CompUnit { <> };
+pub CompUnit: CompUnit = {
+  <tempo: Tempo> <time_signature: TimeSignature> <func_def: FuncDef> => CompUnit { <> },
+}
 
-// 同上, 不解释
+Tempo: i32 = {
+  "Tempo" "=" <Number> ";" => <>,
+}
+
+TimeSignature: TimeSignature = {
+  "TimeSignature" "=" <numerator: IntConst> "/" <denominator: IntConst> ";"  => TimeSignature { <> },
+}
+
 FuncDef: FuncDef = {
   <func_type: FuncType> <ident: Ident> "(" ")" <block: Block> => {
     FuncDef { <> }
   }
 }
 
-FuncType: FuncType = "int" => FuncType::Int;
+FuncType: FuncType = {
+  "midi" => FuncType::Midi,
+}
 
-Block: Block = "{" <stmt: Stmt> "}" => Block { <> };
+Block: Block = {
+  "{" <stmts: Stmts<Play>> "}" => Block { <> },
+};
 
-Stmt: Stmt = "return" <num: Number> ";" => Stmt { <> };
+Stmts<T>: Vec<T> = {
+  <mut v:(<T> ";")*> <e:T?> => match e {
+    None => v,
+    Some(e) => {
+      v.push(e);
+      v
+    }
+  }
+}
+
+Play: Play = {
+  "play(" <bar: Number> "," <start: Number> "," <end: Number> "," <pitch: Number> ")" => Play { <> },
+};
 
 Number: i32 = <num: IntConst> => <>;
 
