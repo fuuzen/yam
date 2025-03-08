@@ -1,0 +1,28 @@
+CompUnit  ::= Tempo TimeSignature FuncDef;
+
+Tempo         ::= "Tempo" "=" INT_CONST ";";
+TimeSignature ::= "Timesignature" "=" INT_CONST "/" INT_CONST ";";
+
+FuncDef   ::= FuncType IDENT "(" ")" Block;
+FuncType  ::= "midi" | "mp3";
+
+Number      ::= INT_CONST;  /* i32 */
+
+UnaryOp     ::= "+" | "-" | "!";
+MulOp       ::= "*" | "/" | "%";
+AddOp       ::= "+" | "-";
+RelOp       ::= "<" | ">" | "<=" | ">=";
+EqOp        ::= "==" | "!=";
+
+Exp         ::= LOrExp;
+PrimaryExp  ::= "(" Exp ")" | Number;
+UnaryExp    ::= PrimaryExp | UnaryOp UnaryExp;
+MulExp      ::= UnaryExp | MulExp MulOp UnaryExp;
+AddExp      ::= MulExp | AddExp AddOp MulExp;
+RelExp      ::= AddExp | RelExp RelOp AddExp;
+EqExp       ::= RelExp | EqExp EqOp RelExp;
+LAndExp     ::= EqExp | LAndExp "&&" EqExp;
+LOrExp      ::= LAndExp | LOrExp "||" LAndExp;
+
+Block     ::= "{" [Play] "}";
+Play      ::= "play(" Exp "," Exp "," Exp "," Exp ");";

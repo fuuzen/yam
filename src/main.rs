@@ -66,7 +66,7 @@ fn main() -> Result<()> {
     let on_delta_time = if i == 0 {
       (tick * play.start) as u32  
     } else {
-      (ast.func_def.block.stmts[i].start - ast.func_def.block.stmts[i-1].end) as u32
+      ((play.bar - ast.func_def.block.stmts[i-1].bar) * 4 + play.start - ast.func_def.block.stmts[i-1].end) as u32
     };
     let off_delta_time = (tick * (play.end - play.start)) as u32;
     track.push_note_on(

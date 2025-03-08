@@ -37,7 +37,7 @@ FuncType: FuncType = {
 
 Block: Block = {
   "{" <stmts: Stmts<Play>> "}" => Block { <> },
-};
+}
 
 Stmts<T>: Vec<T> = {
   <mut v:(<T> ";")*> <e:T?> => match e {
@@ -51,14 +51,18 @@ Stmts<T>: Vec<T> = {
 
 Play: Play = {
   "play(" <bar: Number> "," <start: Number> "," <end: Number> "," <pitch: Number> ")" => Play { <> },
-};
+}
 
-Number: i32 = <num: IntConst> => <>;
+Number: i32 = {
+  <num: IntConst> => <>,
+}
 
 // 如果匹配到标识符, 就返回这个字符串
 // 一对尖括号在此处指代的是正则表达式匹配到的字符串 (&str)
 // 关于尖括号到底代表什么, 请 RTFM
-Ident: String = r"[_a-zA-Z][_a-zA-Z0-9]*" => <>.to_string();
+Ident: String = {
+  r"[_a-zA-Z][_a-zA-Z0-9]*" => <>.to_string(),
+}
 
 // 对整数字面量的处理方式: 把匹配到的字符串按对应进制转换成数字
 IntConst: i32 = {
@@ -67,3 +71,78 @@ IntConst: i32 = {
   r"0[xX][0-9a-fA-F]+" => i32::from_str_radix(&<>[2..], 16).unwrap(),
 }
 
+UnaryOp: UnaryOp = {
+  "+" => UnaryOp::Plus,
+  "-" => UnaryOp::Minus,
+  "!" => UnaryOp::Not,
+}
+
+MulOp: MulOp = {
+  "*" => MulOp::Mul,
+  "/" => MulOp::Div,
+  "%" => MulOp::Mod,
+}
+
+AddOp: AddOp = {
+  "+" => UnaryOp::Add,
+  "-" => UnaryOp::Sub,
+}
+
+RelOp: RelOp = {
+  ">" => RelOp::Gt,
+  "<" => RelOp::Lt,
+  ">=" => RelOp::Ge,
+  "<=" => RelOp::Le,
+}
+
+EqOp: EqOp = {
+  "==" => EqOp::Eq,
+  "!=" => EqOp::Ne,
+}
+
+// Exp: Exp = {
+//   <LOrExp> => <>,
+// }
+
+PrimaryExp: PrimaryExp = {
+  // "(" <Exp> ")" => <>,
+  <Number> => PrimaryExp::Number( <> ),
+}
+
+UnaryExp: UnaryExp = {
+  <primary_exp: PrimaryExp> => UnaryExp {
+    unary_ops: vec![],
+    primary_exp: primary_exp,
+  },
+  <unary_op: UnaryOp> <unary_exp: UnaryExp> => {
+    let mut v = unary_exp;
+    v.unary_ops.push(unary_op);
+    v
+  },
+}
+
+MulExp: MulExp = {
+  <unary_exp: UnaryExp> => MulExp {
+    mul_ops: vec![],
+    unary_exps: vec![ unary_exp ],
+  },
+  <mul_exp: MulExp> <mul_op: MulOp> <unary_exp: UnaryExp> => {
+    let mut v = mul_exp;
+    v.mul_ops.push(mul_op);
+    v.unary_exps.push(unary_exp);
+    v
+  },
+}
+
+AddExp: AddExp = {
+  <mul_exp: MulExp> => AddExp {
+    add_ops: vec![],
+    mul_exps: vec![ mul_exp ],
+  },
+  <add_exp: AddExp> <add_op: AddOp> <mul_exp: MulExp> => {
+    let mut v = add_exp;
+    v.add_ops.push(add_op);
+    v.mul_exps.push(mul_exp);
+    v
+  },
+}
