@@ -58,8 +58,7 @@ Number: i32 = {
 }
 
 // 如果匹配到标识符, 就返回这个字符串
-// 一对尖括号在此处指代的是正则表达式匹配到的字符串 (&str)
-// 关于尖括号到底代表什么, 请 RTFM
+// 一对尖括号(lalrpop 的语法糖)在此处指代的是正则表达式匹配到的字符串 (&str)
 Ident: String = {
   r"[_a-zA-Z][_a-zA-Z0-9]*" => <>.to_string(),
 }
@@ -84,8 +83,8 @@ MulOp: MulOp = {
 }
 
 AddOp: AddOp = {
-  "+" => UnaryOp::Add,
-  "-" => UnaryOp::Sub,
+  "+" => AddOp::Add,
+  "-" => AddOp::Sub,
 }
 
 RelOp: RelOp = {
@@ -100,12 +99,13 @@ EqOp: EqOp = {
   "!=" => EqOp::Ne,
 }
 
-// Exp: Exp = {
-//   <LOrExp> => <>,
-// }
+Exp: Exp = {
+  <LOrExp> => <>,
+}
 
 PrimaryExp: PrimaryExp = {
-  // "(" <Exp> ")" => <>,
+  "(" <Exp> ")" => PrimaryExp::Exp( <> ),
+  <Ident> => PrimaryExp::LVal( <> ),
   <Number> => PrimaryExp::Number( <> ),
 }
 
@@ -143,6 +143,54 @@ AddExp: AddExp = {
     let mut v = add_exp;
     v.add_ops.push(add_op);
     v.mul_exps.push(mul_exp);
+    v
+  },
+}
+
+RelExp: RelExp = {
+  <add_exp: AddExp> => RelExp {
+    rel_ops: vec![],
+    add_exps: vec![ add_exp ],
+  },
+  <rel_exp: RelExp> <rel_op: RelOp> <add_exp: AddExp> => {
+    let mut v = rel_exp;
+    v.rel_ops.push(rel_op);
+    v.add_exps.push(add_exp);
+    v
+  },
+}
+
+EqExp: EqExp = {
+  <rel_exp: RelExp> => EqExp {
+    eq_ops: vec![],
+    rel_exps: vec![ rel_exp ],
+  },
+  <eq_exp: EqExp> <eq_op: EqOp> <rel_exp: RelExp> => {
+    let mut v = eq_exp;
+    v.eq_ops.push(eq_op);
+    v.rel_exps.push(rel_exp);
+    v
+  },
+}
+
+LAndExp: LAndExp = {
+  <eq_exp: EqExp> => LAndExp {
+    eq_exps: vec![ eq_exp ],
+  },
+  <land_exp: LAndExp> "&&" <eq_exp: EqExp> => {
+    let mut v = land_exp;
+    v.eq_exps.push(eq_exp);
+    v
+  },
+}
+
+LOrExp: LOrExp = {
+  <land_exp: LAndExp> => LOrExp {
+    land_exps: vec![ land_exp ],
+  },
+  <lor_exp: LOrExp> "&&" <land_exp: LAndExp> => {
+    let mut v = lor_exp;
+    v.land_exps.push(land_exp);
     v
   },
 }

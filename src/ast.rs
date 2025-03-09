@@ -1,5 +1,5 @@
-type IntConst = i32;
-type Exp = LOrExp;
+pub type IntConst = i32;
+pub type Exp = LOrExp;
 
 #[derive(Debug)]
 pub struct CompUnit {
@@ -77,6 +77,7 @@ pub enum EqOp {
 #[derive(Debug)]
 pub enum PrimaryExp {
   Exp(Exp),
+  LVal(String),
   Number(IntConst),
 }
 
