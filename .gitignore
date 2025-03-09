@@ -1,2 +1,24 @@
-/target
+# 编译结果
+/target/
+
+# 构建缓存
+**/*.rs.bk
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+
+# yam
 *.mid
+*.mp3
