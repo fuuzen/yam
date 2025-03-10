@@ -6,5 +6,6 @@ pub struct Track {
   pub const_decls: Vec<ConstDecl>,
   pub var_decls: Vec<VarDecl>,
   pub func_defs: Vec<FuncDef>,
+  pub ident: String, 
   pub block: Block,
 }

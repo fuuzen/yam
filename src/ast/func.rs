@@ -16,7 +16,7 @@ pub struct FuncFParam {
 pub struct FuncDef {
   pub func_type: FuncType,
   pub ident: String,
-  pub func_fparams: Vec<FuncRParam>,
+  pub func_fparams: Vec<FuncFParam>,
   pub block: Block,
 }
 

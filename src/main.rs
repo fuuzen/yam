@@ -1,4 +1,3 @@
-use lalrpop_util::lalrpop_mod;
 use std::env::args;
 use std::fs::read_to_string;
 use std::io::Result;
@@ -6,8 +5,8 @@ use midi_file::MidiFile;
 use midi_file::core::{Channel, Clocks, DurationName, NoteNumber, Velocity};
 use midi_file::file::{QuartersPerMinute, Track};
 
-// 让 rust-analyzer 帮忙语法检查 ast.rs 文件
 mod ast;
+mod parser;
 
 
 fn main() -> Result<()> {
@@ -22,11 +21,6 @@ fn main() -> Result<()> {
   // 读取输入文件
   let input = read_to_string(input)?;
 
-  // 调用 lalrpop 生成的 parser 解析输入文件
-  let ast: CompUnit = yam::CompUnitParser::new().parse(&input).unwrap();
-
-  // 输出解析得到的 AST
-  println!("{:#?}", ast);
 
   let mut midi_file = MidiFile::new();
   let mut track = Track::default();
