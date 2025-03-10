@@ -1,0 +1,275 @@
+// lalrpop 里的约定
+grammar;
+
+// 约束 lexer 的行为
+match {
+  // 跳过空白符和注释.
+  r"\s*" => {},
+  r"//[^\n\r]*[\n\r]*" => {},
+  // 剩下的情况采用默认方式处理
+  // TODO: 处理形如 /* ... */ 的块注释. 块注释也可以用正则表达式表达, 但会稍微复杂一些
+  _
+}
+
+// .lalrpop 不能用 mod 语句
+use crate::ast::btype::BType;
+
+BType: Btype = {
+  "int" => Btype::Int,
+}
+
+// 如果匹配到标识符, 就返回这个字符串
+// 一对尖括号(lalrpop 的语法糖)在此处指代的是正则表达式匹配到的字符串 (&str)
+Ident: String = {
+  r"[_a-zA-Z][_a-zA-Z0-9]*" => <>.to_string(),
+}
+
+LVal: LVal = {
+  <Ident> => <>,
+  /* TODO: 支持数组，即左值支持下标 */
+}
+
+// 对整数字面量的处理方式: 把匹配到的字符串按对应进制转换成数字
+IntConst: i32 = {
+  r"[1-9][0-9]*" => i32::from_str_radix(<>, 10).unwrap(),
+  r"0[0-7]*" => i32::from_str_radix(<>, 8).unwrap(),
+  r"0[xX][0-9a-fA-F]+" => i32::from_str_radix(&<>[2..], 16).unwrap(),
+}
+
+Number: i32 = {
+  <IntConst> => <>,
+}
+
+// 逗号分隔的 T 规则匹配的 T 列表
+List<T>: Vec<T> = {
+  <mut v:(<T> ",")*> <e:T?> => match e {
+    None => v,
+    Some(e) => {
+      v.push(e);
+      v
+    }
+  }
+}
+
+/******************************* exp 部分 开始 ******************************/
+
+use crate::ast::expr::{*};
+
+UnaryOp: UnaryOp = {
+  "+" => UnaryOp::Plus,
+  "-" => UnaryOp::Minus,
+  "!" => UnaryOp::Not,
+}
+
+MulOp: MulOp = {
+  "*" => MulOp::Mul,
+  "/" => MulOp::Div,
+  "%" => MulOp::Mod,
+}
+
+AddOp: AddOp = {
+  "+" => AddOp::Add,
+  "-" => AddOp::Sub,
+}
+
+RelOp: RelOp = {
+  ">" => RelOp::Gt,
+  "<" => RelOp::Lt,
+  ">=" => RelOp::Ge,
+  "<=" => RelOp::Le,
+}
+
+EqOp: EqOp = {
+  "==" => EqOp::Eq,
+  "!=" => EqOp::Ne,
+}
+
+Expr: Expr = {
+  <LOrExpr> => <>,
+}
+
+PrimaryExpr: PrimaryExpr = {
+  "(" <Expr> ")" => PrimaryExpr::Expr( <> ),
+  <Ident> => PrimaryExpr::LVal( <> ),
+  <Number> => PrimaryExpr::Number( <> ),
+}
+
+UnaryExpr: UnaryExpr = {
+  <primary_exp: PrimaryExpr> => UnaryExpr {
+    unary_ops: vec![],
+    primary_exp: primary_exp,
+  },
+  <unary_op: UnaryOp> <unary_exp: UnaryExpr> => {
+    let mut v = unary_exp;
+    v.unary_ops.push(unary_op);
+    v
+  },
+}
+
+MulExpr: MulExpr = {
+  <unary_exp: UnaryExpr> => MulExpr {
+    mul_ops: vec![],
+    unary_exps: vec![ unary_exp ],
+  },
+  <mul_exp: MulExpr> <mul_op: MulOp> <unary_exp: UnaryExpr> => {
+    let mut v = mul_exp;
+    v.mul_ops.push(mul_op);
+    v.unary_exps.push(unary_exp);
+    v
+  },
+}
+
+AddExpr: AddExpr = {
+  <mul_exp: MulExpr> => AddExpr {
+    add_ops: vec![],
+    mul_exps: vec![ mul_exp ],
+  },
+  <add_exp: AddExpr> <add_op: AddOp> <mul_exp: MulExpr> => {
+    let mut v = add_exp;
+    v.add_ops.push(add_op);
+    v.mul_exps.push(mul_exp);
+    v
+  },
+}
+
+RelExpr: RelExpr = {
+  <add_exp: AddExpr> => RelExpr {
+    rel_ops: vec![],
+    add_exps: vec![ add_exp ],
+  },
+  <rel_exp: RelExpr> <rel_op: RelOp> <add_exp: AddExpr> => {
+    let mut v = rel_exp;
+    v.rel_ops.push(rel_op);
+    v.add_exps.push(add_exp);
+    v
+  },
+}
+
+EqExpr: EqExpr = {
+  <rel_exp: RelExpr> => EqExpr {
+    eq_ops: vec![],
+    rel_exps: vec![ rel_exp ],
+  },
+  <eq_exp: EqExpr> <eq_op: EqOp> <rel_exp: RelExpr> => {
+    let mut v = eq_exp;
+    v.eq_ops.push(eq_op);
+    v.rel_exps.push(rel_exp);
+    v
+  },
+}
+
+LAndExpr: LAndExpr = {
+  <eq_exp: EqExpr> => LAndExpr {
+    eq_exps: vec![ eq_exp ],
+  },
+  <land_exp: LAndExpr> "&&" <eq_exp: EqExpr> => {
+    let mut v = land_exp;
+    v.eq_exps.push(eq_exp);
+    v
+  },
+}
+
+LOrExpr: LOrExpr = {
+  <land_exp: LAndExpr> => LOrExpr {
+    land_exps: vec![ land_exp ],
+  },
+  <lor_exp: LOrExpr> "&&" <land_exp: LAndExpr> => {
+    let mut v = lor_exp;
+    v.land_exps.push(land_exp);
+    v
+  },
+}
+
+/******************************* exp 部分 结束 ******************************/
+/******************************* stmt 部分 开始 ******************************/
+
+use crate::ast::stmt::{*};
+
+ConstDef: ConstDef = {
+  <ident: Ident> "=" <expr: Expr> => ConstDef{ <> },
+}
+
+ConstDecl: ConstDecl = {
+  "const" <btype: BType> <const_defs: List<ConstDef>> ";" => ConstDecl { <> }
+}
+
+VarDef: VarDef = {
+  <ident: Ident> => VarDef{
+    ident,
+    None,
+  },
+  <ident: Ident> "=" <expr_: Expr> => VarDef{
+    ident,
+    Some(expr_),
+  },
+}
+
+VarDecl: VarDecl = {
+  <btype: BType> <var_defs: List<VarDef>> ";" => VarDecl { <> }
+}
+
+Asgn: Asgn = {
+  <lval: Lval> "=" <expr: Expr> => Asgn{ <> },
+}
+
+If: If = {
+  "if" "(" <cond: Expr> ")" <then: Stmt> => If {
+    cond,
+    then,
+    None,
+  },
+  "if" "(" <cond: Expr> ")" <then: Stmt> "else" <else_: Stmt>  => If {
+    cond,
+    then,
+    Some(else_),
+  },
+}
+
+While: While = {
+  "while" "(" <cond: Expr> ")" <body: Stmt> => While { <> },
+}
+
+Stmt: Stmt = {
+  <ConstDecl> => Stmt::ConstDecl( <> ),
+  <VarDecl> => Stmt::VarDecl( <> ),
+  <Asgn> => Stmt::Asgn( <> ),
+  <Block> => Stmt::Block( <> ),
+  <If> => Stmt::If( <> ),
+  <While> => Stmt::While( <> ),
+  "break" ";" => Stmt::Break,
+  "continue" ";" => Stmt::Continue,
+  "return" ";" => Stmt::Return( None ),
+  "return" <expr: Expr> ";" => Stmt::Return( Some(expr) ),
+}
+
+Block: Block = {
+  <stmt: Stmt> => Block { vec![ stmt ] },
+  <block: Block> <stmt: Stmt> => {
+    let mut v = block;
+    v.stmts.push(stmt);
+    v
+  },
+}
+
+/******************************* stmt 部分 结束 ******************************/
+/******************************* func 部分 开始 ******************************/
+
+use crate::func::types::{*};
+
+FuncDef: FuncDef = {
+  <func_type: FuncType> <ident: Ident> "(" ")" <block: Block> => {
+    FuncDef { <> }
+  }
+}
+
+FuncType: FuncType = {
+  <BType> => FuncType::BType(),
+  "void" => FuncType::Void,
+}
+
+/******************************* func 部分 结束 ******************************/
+/******************************* track 部分 开始 ******************************/
+
+
+
+/******************************* track 部分 结束 ******************************/

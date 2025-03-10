@@ -8,10 +8,7 @@ use midi_file::file::{QuartersPerMinute, Track};
 
 // 让 rust-analyzer 帮忙语法检查 ast.rs 文件
 mod ast;
-use ast::CompUnit;
 
-// 引用 lalrpop 生成的解析器，模块名是 .lalrpop 文件的名字
-lalrpop_mod!(yam);
 
 fn main() -> Result<()> {
   // 解析命令行参数

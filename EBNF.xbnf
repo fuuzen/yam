@@ -4,46 +4,52 @@ AddOp         ::= "+" | "-";
 RelOp         ::= "<" | ">" | "<=" | ">=";
 EqOp          ::= "==" | "!=";
 
-Number        ::= INT_CONST;  /* i32 */
-PrimaryExp    ::= "(" Exp ")" | IDENT | Number;
+BType         ::= "int";      /* Base Type */
+Number        ::= INT_CONST;  /* int -> i32 */
+LVal          ::= IDENT       /* TODO: 支持数组，即左值支持下标 */
 
-UnaryExp      ::= PrimaryExp | UnaryOp UnaryExp | FuncCall;
-MulExp        ::= UnaryExp | MulExp MulOp UnaryExp;
-AddExp        ::= MulExp | AddExp AddOp MulExp;
-RelExp        ::= AddExp | RelExp RelOp AddExp;
-EqExp         ::= RelExp | EqExp EqOp RelExp;
-LAndExp       ::= EqExp | LAndExp "&&" EqExp;
-LOrExp        ::= LAndExp | LOrExp "||" LAndExp;
-Exp           ::= LOrExp;
+PrimaryExpr   ::= "(" Expr ")" | LVal | Number;
+UnaryExpr     ::= PrimaryExpr | UnaryOp UnaryExpr | FuncCall;
+MulExpr       ::= UnaryExpr | MulExpr MulOp UnaryExpr;
+AddExpr       ::= MulExpr | AddExpr AddOp MulExpr;
+RelExpr       ::= AddExpr | RelExpr RelOp AddExpr;
+EqExpr        ::= RelExpr | EqExpr EqOp RelExpr;
+LAndExpr      ::= EqExpr | LAndExpr "&&" EqExpr;
+LOrExpr       ::= LAndExpr | LOrExpr "||" LAndExpr;
+Expr          ::= LOrExpr;
 
-BType         ::= "int";
-ConstDecl     ::= "const" BType ConstDef {"," ConstDef} ";";
-ConstDef      ::= IDENT "=" Exp;
-VarDecl       ::= BType VarDef {"," VarDef} ";";
-VarDef        ::= IDENT | IDENT "=" Exp;
-Decl          ::= ConstDecl | VarDecl;   /* 声明语句 */
-
-FuncType      ::= "void" | "int";
+FuncType      ::= "void" | BType;
 FuncFParams   ::= FuncFParam {"," FuncFParam};
 FuncFParam    ::= BType IDENT;
-FuncRParams   ::= Exp {"," Exp};
+FuncRParams   ::= Expr {"," Expr};
 FuncDef       ::= FuncType IDENT "(" [FuncFParams] ")" Block;  /* 函数定义(无声明，直接实现) */
 FuncCall      ::= IDENT "(" [FuncRParams] ")";                 /* 函数调用 */
 
-MacroName     ::= "next" | "play" | "tempo" | "meter"
-MacroCall     ::= FuncName "(" {Exp} ")" ";" /* 参数检查放在语义检查 */
+ConstDef      ::= IDENT "=" Expr;
+ConstDefs     ::= ConstDef {"," ConstDef}
+ConstDecl     ::= "const" BType ConstDefs ";";
+VarDef        ::= IDENT | IDENT "=" Expr;
+VarDefs       ::= VarDef {"," VarDef}
+VarDecl       ::= BType VarDef {"," VarDef} ";";
+Decl          ::= ConstDecl | VarDecl;                  /* 声明语句 */
+Asgn          ::= LVal "=" Expr ";"                     /* 赋值语句 */
+If            ::= "if" "(" Expr ")" Stmt ["else" Stmt]  /* if 语句 */
+While         ::= "while" "(" Expr ")" Stmt             /* while 语句 */
+Break         ::= "break" ";"                           /* break */
+Continue      ::= "continue" ";"                        /* continue */
+Return        ::= "return" [Expr] ";"                   /* return */
 
 Stmt ::= Block
-       | IDENT "=" Exp ";"  /* 赋值语句 */
-       | [Exp] ";"          /* 无意义表达式 */
-       | "if" "(" Exp ")" Stmt ["else" Stmt]
-       | "while" "(" Exp ")" Stmt
-       | "break" ";"
-       | "continue" ";"
-       | "return" [Exp] ";"
+       | Decl
+       | Asgn
+       | [Expr] ";"   /* 无意义表达式以及分号，不构建其 AST */
+       | If
+       | While
+       | Break
+       | Continue
+       | Return
        ;
 
-Block         ::= "{" {BlockItem} "}";
-BlockItem     ::= Decl | Stmt | MacroCall;
+Block         ::= "{" {Stmt} "}";
 
-Track         ::= "track" IDENT Block;
+Track         ::= {Decl | FuncDef} "track" IDENT Block;
