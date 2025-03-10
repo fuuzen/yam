@@ -42,7 +42,7 @@ Number: i32 = {
 
 // 逗号分隔的 T 规则匹配的 T 列表
 List<T>: Vec<T> = {
-  <T> => !vec[ <> ],
+  <T> => vec![ <> ],
   <mut v : List<T>> "," <t: T> => {
     v.push(t);
     v
@@ -88,7 +88,7 @@ Expr: Expr = {
 
 PrimaryExpr: PrimaryExpr = {
   "(" <Expr> ")" => PrimaryExpr::Expr( <> ),
-  <Ident> => PrimaryExpr::LVal( <> ),
+  <Ident> => PrimaryExpr::LVal( LVal::Ident( <> ) ),
   <Number> => PrimaryExpr::Number( <> ),
 }
 
@@ -187,11 +187,11 @@ ConstDecl: ConstDecl = {
 VarDef: VarDef = {
   <ident: Ident> => VarDef{
     ident,
-    None,
+    expr_ : None,
   },
   <ident: Ident> "=" <expr_: Expr> => VarDef{
     ident,
-    Some(expr_),
+    expr_ : Some(expr_),
   },
 }
 
@@ -206,16 +206,21 @@ Asgn: Asgn = {
 If: If = {
   "if" "(" <cond: Expr> ")" <body: Stmt> => If {
     cond,
-    body,
+    body: Box::new(body),
   },
 }
 
 Else: Else = {
-  "else" <stmt: Stmt>  => Else { <> },
+  "else" <stmt: Stmt>  => Else {
+    stmt: Box::new(stmt),
+  },
 }
 
 While: While = {
-  "while" "(" <cond: Expr> ")" <body: Stmt> => While { <> },
+  "while" "(" <cond: Expr> ")" <body: Stmt> => While {
+    cond,
+    body: Box::new(body),
+  },
 }
 
 Stmt: Stmt = {

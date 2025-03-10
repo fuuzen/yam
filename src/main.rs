@@ -4,8 +4,7 @@ use std::io::Result;
 use midi_file::MidiFile;
 use midi_file::core::{Channel, Clocks, DurationName, NoteNumber, Velocity};
 use midi_file::file::{QuartersPerMinute, Track};
-
-mod ast;
+use yam::Parser;
 
 fn main() -> Result<()> {
   // 解析命令行参数
@@ -18,7 +17,10 @@ fn main() -> Result<()> {
 
   // 读取输入文件
   let input = read_to_string(input)?;
-  let parser = Parser::new(input.as_str());
+  let parser = Parser::new();
+  let ast = parser.parse(input);
+
+  println!("{:#?}", ast);
 
 
   // let mut midi_file = MidiFile::new();

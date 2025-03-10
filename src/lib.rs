@@ -1,3 +1,3 @@
 mod parser;
 mod ast;
-pub use parser::Parser;
+pub use parser::Parser as Parser;
