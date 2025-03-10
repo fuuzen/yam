@@ -1,3 +1,5 @@
+use super::btype::LVal;
+
 pub type IntConst = i32;
 pub type Expr = LOrExpr;
 
@@ -38,7 +40,7 @@ pub enum EqOp {
 #[derive(Debug)]
 pub enum PrimaryExpr {
   Expr(Expr),
-  LVal(String),
+  LVal(LVal),
   Number(IntConst),
 }
 

@@ -12,10 +12,10 @@ match {
 }
 
 // .lalrpop 不能用 mod 语句
-use crate::ast::btype::BType;
+use crate::ast::btype::{*};
 
-BType: Btype = {
-  "int" => Btype::Int,
+BType: BType = {
+  "int" => BType::Int,
 }
 
 // 如果匹配到标识符, 就返回这个字符串
@@ -25,7 +25,7 @@ Ident: String = {
 }
 
 LVal: LVal = {
-  <Ident> => <>,
+  <Ident> => LVal::Ident( <> ),
   /* TODO: 支持数组，即左值支持下标 */
 }
 
@@ -204,16 +204,14 @@ Asgn: Asgn = {
 }
 
 If: If = {
-  "if" "(" <cond: Expr> ")" <then: Stmt> => If {
+  "if" "(" <cond: Expr> ")" <body: Stmt> => If {
     cond,
-    then,
-    None,
+    body,
   },
-  "if" "(" <cond: Expr> ")" <then: Stmt> "else" <else_: Stmt>  => If {
-    cond,
-    then,
-    Some(else_),
-  },
+}
+
+Else: Else = {
+  "else" <stmt: Stmt>  => Else { <> },
 }
 
 While: While = {
@@ -226,6 +224,7 @@ Stmt: Stmt = {
   <Asgn> => Stmt::Asgn( <> ),
   <Block> => Stmt::Block( <> ),
   <If> => Stmt::If( <> ),
+  <Else> => Stmt::Else( <> ),
   <While> => Stmt::While( <> ),
   "break" ";" => Stmt::Break,
   "continue" ";" => Stmt::Continue,
@@ -270,6 +269,8 @@ FuncCall: FuncCall = {
 
 /******************************* func 部分 结束 ******************************/
 /******************************* track 部分 开始 ******************************/
+
+use crate::ast::track::{*};
 
 /* 定义为 pub 导出语法解析器 */
 pub Track: Track = {

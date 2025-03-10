@@ -1,3 +1,5 @@
+use super::{btype::{BType, LVal}, expr::Expr};
+
 #[derive(Debug)]
 pub struct ConstDef {
   pub ident: String,
@@ -31,15 +33,20 @@ pub struct Asgn {
 #[derive(Debug)]
 pub struct If {
   pub cond: Expr,
-  pub then: Stmt,
-  pub else_: Option<Stmt>,
+  pub body: Box<Stmt>,
+}
+
+#[derive(Debug)]
+pub struct Else {
+  pub stmt: Box<Stmt>,
 }
 
 #[derive(Debug)]
 pub struct While {
   pub cond: Expr,
-  pub body: Stmt,
+  pub body: Box<Stmt>,
 }
+
 
 #[derive(Debug)]
 pub enum Stmt {
@@ -48,6 +55,7 @@ pub enum Stmt {
   Asgn(Asgn),
   Block(Block),
   If(If),
+  Else(Else),
   While(While),
   Break,
   Continue,

@@ -1,4 +1,4 @@
-use super::btype::BType;
+use super::{btype::BType, expr::Expr, stmt::Block};
 
 #[derive(Debug)]
 pub enum FuncType {
@@ -8,7 +8,7 @@ pub enum FuncType {
 
 #[derive(Debug)]
 pub struct FuncFParam {
-  pub btype: Btype,
+  pub btype: BType,
   pub ident: String, 
 }
 
