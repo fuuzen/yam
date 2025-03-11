@@ -1,13 +1,22 @@
 mod block;
 
+use std::collections::HashMap;
+use std::rc::Rc;
 use crate::ast::{btype::BType, track::Track};
 use crate::error::Error;
+use block::BlockState;
 
-pub struct Analyzer {}
+pub struct Analyzer {
+  block_states: Vec<BlockState>,
+  block_table: HashMap<u32, Rc<BlockState>>,
+}
 
 impl Analyzer {
   pub fn new() -> Self {
-    Self {}
+    Self {
+      block_states: vec![],
+      block_table: HashMap::new(),
+    }
   }
 
   /// 分析 AST 并进行语义检查
