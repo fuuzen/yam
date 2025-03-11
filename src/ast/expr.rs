@@ -1,4 +1,4 @@
-use super::btype::LVal;
+use super::{btype::LVal, func::FuncCall};
 
 pub type IntConst = i32;
 pub type Expr = LOrExpr;
@@ -42,6 +42,7 @@ pub enum PrimaryExpr {
   Expr(Expr),
   LVal(LVal),
   Number(IntConst),
+  FuncCall(FuncCall),
 }
 
 #[derive(Debug)]

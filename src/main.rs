@@ -5,12 +5,14 @@ use midi_file::MidiFile;
 use midi_file::core::{Channel, Clocks, DurationName, NoteNumber, Velocity};
 use midi_file::file::{QuartersPerMinute, Track};
 use yam::Parser;
+use std::fs::File;
+use std::io::Write;
 
 fn main() -> Result<()> {
   // 解析命令行参数
   let mut args = args();
   args.next();
-  let mode = args.next().unwrap();
+  // let mode = args.next().unwrap();
   let input = args.next().unwrap();
   args.next();
   let output = args.next().unwrap();
@@ -20,8 +22,9 @@ fn main() -> Result<()> {
   let parser = Parser::new();
   let ast = parser.parse(input);
 
-  println!("{:#?}", ast);
-
+  let content = format!("{:#?}",ast);
+  let mut file = File::create(output)?;
+  file.write_all(content.as_bytes())?;
 
   // let mut midi_file = MidiFile::new();
   // let mut track = Track::default();

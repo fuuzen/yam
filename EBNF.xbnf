@@ -8,8 +8,8 @@ BType         ::= "int";      /* Base Type */
 Number        ::= INT_CONST;  /* int -> i32 */
 LVal          ::= IDENT       /* TODO: 支持数组，即左值支持下标 */
 
-PrimaryExpr   ::= "(" Expr ")" | LVal | Number;
-UnaryExpr     ::= PrimaryExpr | UnaryOp UnaryExpr | FuncCall;
+PrimaryExpr   ::= "(" Expr ")" | LVal | Number | FuncCall;
+UnaryExpr     ::= PrimaryExpr | UnaryOp UnaryExpr;
 MulExpr       ::= UnaryExpr | MulExpr MulOp UnaryExpr;
 AddExpr       ::= MulExpr | AddExpr AddOp MulExpr;
 RelExpr       ::= AddExpr | RelExpr RelOp AddExpr;

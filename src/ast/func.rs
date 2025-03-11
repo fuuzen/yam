@@ -20,6 +20,7 @@ pub struct FuncDef {
   pub block: Block,
 }
 
+#[derive(Debug)]
 pub struct FuncCall {
   pub ident: String,
   pub func_rparams: Vec<Expr>,

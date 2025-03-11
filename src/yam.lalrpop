@@ -40,13 +40,28 @@ Number: i32 = {
   <IntConst> => <>,
 }
 
-// 逗号分隔的 T 规则匹配的 T 列表
-List<T>: Vec<T> = {
+// 无分隔符号分隔的 T 规则匹配的非空 T 列表
+Vec<T>: Vec<T> = {
   <T> => vec![ <> ],
-  <mut v : List<T>> "," <t: T> => {
+  <mut v : Vec<T>> <t: T> => {
     v.push(t);
     v
   }
+}
+
+// 逗号分隔的 T 规则匹配的非空 T 列表
+VecComma<T>: Vec<T> = {
+  <T> => vec![ <> ],
+  <mut v : VecComma<T>> "," <t: T> => {
+    v.push(t);
+    v
+  }
+}
+
+// 可选规则
+Option<T>: Option<T> = {
+  () => None,
+  <T> => Some( <> ),
 }
 
 /******************************* exp 部分 开始 ******************************/
@@ -90,6 +105,7 @@ PrimaryExpr: PrimaryExpr = {
   "(" <Expr> ")" => PrimaryExpr::Expr( <> ),
   <Ident> => PrimaryExpr::LVal( LVal::Ident( <> ) ),
   <Number> => PrimaryExpr::Number( <> ),
+  <FuncCall> => PrimaryExpr::FuncCall( <> ),
 }
 
 UnaryExpr: UnaryExpr = {
@@ -181,7 +197,7 @@ ConstDef: ConstDef = {
 }
 
 ConstDecl: ConstDecl = {
-  "const" <btype: BType> <const_defs: List<ConstDef>> ";" => ConstDecl { <> }
+  "const" <btype: BType> <const_defs: VecComma<ConstDef>> ";" => ConstDecl { <> }
 }
 
 VarDef: VarDef = {
@@ -196,7 +212,7 @@ VarDef: VarDef = {
 }
 
 VarDecl: VarDecl = {
-  <btype: BType> <var_defs: List<VarDef>> ";" => VarDecl { <> }
+  <btype: BType> <var_defs: VecComma<VarDef>> ";" => VarDecl { <> }
 }
 
 Asgn: Asgn = {
@@ -265,11 +281,22 @@ FuncFParam: FuncFParam = {
 }
 
 FuncDef: FuncDef = {
-  <func_type: FuncType> <ident: Ident> "(" <func_fparams: List<FuncFParam>> ")" <block: Block> => FuncDef { <> }
+  <btype: BType> <ident: Ident> "(" <func_fparams: VecComma<FuncFParam>> ")" <block: Block> => FuncDef {
+    func_type: FuncType::BType( btype ),
+    ident,
+    func_fparams,
+    block,
+  },
+  "void" <ident: Ident> "(" <func_fparams: VecComma<FuncFParam>> ")" <block: Block> => FuncDef {
+    func_type: FuncType::Void,
+    ident,
+    func_fparams,
+    block,
+  },
 }
 
 FuncCall: FuncCall = {
-  <ident: Ident> <func_rparams: List<Expr>> => FuncCall { <> },
+  <ident: Ident> "(" <func_rparams: VecComma<Expr>> ")" => FuncCall { <> },
 }
 
 /******************************* func 部分 结束 ******************************/
@@ -277,9 +304,15 @@ FuncCall: FuncCall = {
 
 use crate::ast::track::{*};
 
+Def: Def = {
+  <ConstDecl> => Def::ConstDecl( <> ),
+  <VarDecl> => Def::VarDecl( <> ),
+  // <FuncDef> => Def::FuncDef( <> ),
+}
+
 /* 定义为 pub 导出语法解析器 */
 pub Track: Track = {
-  <const_decls: List<ConstDecl>> <var_decls: List<VarDecl>> <func_defs: List<FuncDef>> "track" <ident: Ident> <block: Block> => Track { <> },
+  <defs: Option<Vec<Def>>> "track" <ident: Ident> <block: Block> => Track { <> },
 }
 
 /******************************* track 部分 结束 ******************************/
