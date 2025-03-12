@@ -1,21 +1,27 @@
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::ast::btype::{BType, RVal, LVal, INT_DEFAULT};
 use crate::ast::expr::Expr;
 use crate::error::Error;
 
-pub type BlockId = u32;
+pub type BlockId = u64;
 
 /// 追踪 Block 作用域内所有声明的函数、常量、变量的值的 Block 的状态
+#[derive(Debug)]
 pub struct BlockState {
+  block_id: BlockId,
   func_table: HashMap<String, BlockId>,
   const_table: HashMap<(BType, LVal), RVal>,
   var_table: HashMap<(BType, LVal), RVal>,
 }
 
+static NEXT_ID: AtomicU64 = AtomicU64::new(0);
+
 impl BlockState {
   pub fn new() -> Self {
     Self {
+      block_id: NEXT_ID.fetch_add(1, Ordering::SeqCst),
       func_table: HashMap::new(),
       const_table: HashMap::new(),
       var_table: HashMap::new(),
@@ -36,7 +42,7 @@ impl BlockState {
           err = format!("redeclaration of constant {}", *ident);
         }
       }
-      Err(Error::ParseError(err))
+      Err(Error::SemanticError(err))
     }
   }
 
@@ -58,7 +64,7 @@ impl BlockState {
           err = format!("redeclaration of variant {}", *ident);
         }
       }
-      Err(Error::ParseError(err))
+      Err(Error::SemanticError(err))
     }
   }
 
@@ -70,7 +76,7 @@ impl BlockState {
       self.func_table.insert(k, v);
       Ok(())
     } else {
-      Err(Error::ParseError(format!("redeclaration of function {}", *ident)))
+      Err(Error::SemanticError(format!("redeclaration of function {}", *ident)))
     }
   }
 
@@ -84,14 +90,14 @@ impl BlockState {
           err = format!("cannot assign to constant {}", *ident);
         }
       }
-      Err(Error::ParseError(err))
+      Err(Error::SemanticError(err))
     } else if self.var_table.get(&k).is_none() {
       match lval {
         LVal::Ident(ident) => {
           err = format!("variable {} is not defined", *ident);
         }
       }
-      Err(Error::ParseError(err))
+      Err(Error::SemanticError(err))
     } else {
       Ok(())
     }
@@ -102,9 +108,14 @@ impl BlockState {
   pub fn func_call_check(&self, ident: &String, _func_rparams: Vec<Expr>) -> Result<(), Error> {
     let k = ident.clone();
     if self.func_table.get(&k).is_none() {
-      Err(Error::ParseError(format!("function {} is not defined", *ident)))
+      Err(Error::SemanticError(format!("function {} is not defined", *ident)))
     } else {
       Ok(())
     }
+  }
+
+  /// 获取 block_id
+  pub fn get_id(&self) -> BlockId {
+    self.block_id
   }
 }

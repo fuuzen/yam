@@ -191,6 +191,7 @@ LOrExpr: LOrExpr = {
 /******************************* stmt 部分 开始 ******************************/
 
 use crate::ast::stmt::{*};
+use crate::semantic::block::BlockState;
 
 ConstDef: ConstDef = {
   <ident: Ident> "=" <expr: Expr> => ConstDef{ <> },
@@ -263,7 +264,10 @@ Stmts: Vec<Stmt> = {
 }
 
 Block: Block = {
-  "{" <stmts: Stmts> "}" => Block { <> },
+  "{" <stmts: Stmts> "}" => Block {
+    stmts,
+    block_state: BlockState::new(),
+  },
 }
 
 /******************************* stmt 部分 结束 ******************************/

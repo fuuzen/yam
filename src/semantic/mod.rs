@@ -1,4 +1,4 @@
-mod block;
+pub mod block;
 
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -7,14 +7,12 @@ use crate::error::Error;
 use block::BlockState;
 
 pub struct Analyzer {
-  block_states: Vec<BlockState>,
   block_table: HashMap<u32, Rc<BlockState>>,
 }
 
 impl Analyzer {
   pub fn new() -> Self {
     Self {
-      block_states: vec![],
       block_table: HashMap::new(),
     }
   }
