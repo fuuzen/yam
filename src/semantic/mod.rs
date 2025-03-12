@@ -1,13 +1,13 @@
-pub mod block;
+pub mod scope;
 
 use std::collections::HashMap;
 use std::rc::Rc;
-use crate::ast::{btype::BType, track::Track};
+use crate::ast::block::Block;
+use crate::ast::track::Track;
 use crate::error::Error;
-use block::BlockState;
 
 pub struct Analyzer {
-  block_table: HashMap<u32, Rc<BlockState>>,
+  block_table: HashMap<u32, Rc<Block>>,
 }
 
 impl Analyzer {

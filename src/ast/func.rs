@@ -1,4 +1,4 @@
-use super::{btype::BType, expr::Expr, stmt::Block};
+use super::{btype::BType, expr::Expr, block::Block};
 
 #[derive(Debug)]
 pub enum FuncType {

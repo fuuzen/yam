@@ -1,5 +1,6 @@
 use super::func::FuncDef;
-use super::stmt::{ConstDecl, VarDecl, Block};
+use super::block::Block;
+use super::stmt::{ConstDecl, VarDecl};
 
 #[derive(Debug)]
 pub enum Def {

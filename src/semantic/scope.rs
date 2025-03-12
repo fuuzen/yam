@@ -1,27 +1,22 @@
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 
+use crate::ast::block::BlockId;
 use crate::ast::btype::{BType, RVal, LVal, INT_DEFAULT};
 use crate::ast::expr::Expr;
 use crate::error::Error;
 
-pub type BlockId = u64;
-
-/// 追踪 Block 作用域内所有声明的函数、常量、变量的值的 Block 的状态
-#[derive(Debug)]
-pub struct BlockState {
+pub struct  BlockScope {
   block_id: BlockId,
   func_table: HashMap<String, BlockId>,
   const_table: HashMap<(BType, LVal), RVal>,
   var_table: HashMap<(BType, LVal), RVal>,
 }
 
-static NEXT_ID: AtomicU64 = AtomicU64::new(0);
 
-impl BlockState {
-  pub fn new() -> Self {
+impl BlockScope {
+  pub fn new(block_id: BlockId) -> Self {
     Self {
-      block_id: NEXT_ID.fetch_add(1, Ordering::SeqCst),
+      block_id,
       func_table: HashMap::new(),
       const_table: HashMap::new(),
       var_table: HashMap::new(),
@@ -29,6 +24,7 @@ impl BlockState {
   }
 
   /// 声明一个常量
+  /// 作用域检查仅限于本 Block，故可以遮蔽上层 Block 的同名常量
   pub fn const_decl(&mut self, btype: &BType, lval: &LVal, rval: &RVal) -> Result<(), Error> {
     let k = (btype.clone(), lval.clone());
     let v = rval.clone();
@@ -47,6 +43,7 @@ impl BlockState {
   }
 
   /// 声明一个变量，若没有指定初始值，则使用 yam::ast::btypes 所定义的默认初始值
+  /// 作用域检查仅限于本 Block，故可以遮蔽上层 Block 的同名变量
   pub fn var_decl(&mut self, btype: &BType, lval: &LVal, rval: Option<RVal>) -> Result<(), Error> {
     let k = (btype.clone(), lval.clone());
     if self.var_table.get(&k).is_none() {
@@ -69,6 +66,8 @@ impl BlockState {
   }
 
   /// 声明并定义一个函数
+  /// 作用域检查仅限于本 Block，故可以遮蔽上层 Block 的同名函数
+  /// 上层 Block 还需要继续检查
   pub fn func_def(&mut self, ident: &String, block_id: &BlockId) -> Result<(), Error> {
     let k = ident.clone();
     let v = block_id.clone();
@@ -81,6 +80,9 @@ impl BlockState {
   }
 
   /// 检查对一个变量 LVal 的赋值是否合法
+  /// 作用域检查仅限于本 Block，故可以遮蔽上层 Block 的同名常量和变量
+  /// 上层 Block 还需要继续检查
+  /// TODO: 赋值的类型检查
   pub fn asgn_check(&self, btype: &BType, lval: &LVal) -> Result<(), Error> {
     let err: String;
     let k = (btype.clone(), lval.clone());
@@ -104,6 +106,7 @@ impl BlockState {
   }
 
   /// 检查对一个函数的调用是否合法
+  /// 仅限于本 Block 的函数定义，上层 Block 还需要继续检查
   /// TODO: 调用参数的类型检查
   pub fn func_call_check(&self, ident: &String, _func_rparams: Vec<Expr>) -> Result<(), Error> {
     let k = ident.clone();
@@ -112,10 +115,5 @@ impl BlockState {
     } else {
       Ok(())
     }
-  }
-
-  /// 获取 block_id
-  pub fn get_id(&self) -> BlockId {
-    self.block_id
   }
 }

@@ -1,5 +1,5 @@
+use super::block::Block;
 use super::{btype::{BType, LVal}, expr::Expr};
-use crate::semantic::block::BlockState;
 
 #[derive(Debug)]
 pub struct ConstDef {
@@ -61,10 +61,4 @@ pub enum Stmt {
   Break,
   Continue,
   Return(Option<Expr>),
-}
-
-#[derive(Debug)]
-pub struct Block {
-  pub stmts: Vec<Stmt>,
-  pub block_state: BlockState,
 }
