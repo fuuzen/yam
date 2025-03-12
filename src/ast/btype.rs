@@ -5,6 +5,7 @@ pub const INT_DEFAULT: RVal = RVal::Int(0);
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum BType {
   Int,
+  Bool,
 }
 
 /// Left Value，左值

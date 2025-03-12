@@ -1,6 +1,6 @@
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::{rc::Rc, sync::atomic::{AtomicU64, Ordering}};
 
-use super::stmt::Stmt;
+use super::{func::FuncDef, stmt::Stmt};
 
 pub type BlockId = u64;
 
@@ -15,13 +15,14 @@ pub struct Block {
   pub block_id: BlockId,
   
   /// parse 阶段还无法给出，只能在语义检查阶段找到其父 Block
+  /// 函数定义和 Track 的 Block 的父级认为是没有的 
   pub parrent_id: Option<BlockId>,
   
   /// 表明这是一个 while 循环的 Block。目前将该属性设置放在语义检查阶段
   pub while_: bool,
   
   /// 表明这是一个函数定义的 Block，它的 Identity。目前将该属性设置放在语义检查阶段
-  pub func: Option<String>,
+  pub func: Option<Rc<FuncDef>>,
 }
 
 impl Block {
@@ -45,9 +46,9 @@ impl Block {
     self.parrent_id = Some(id);
   }
 
-  /// 定义父 Block 属于一个函数
-  pub fn set_func(&mut self, ident: String) {
-    self.func = Some(ident);
+  /// 定义父 Block 所属于的函数
+  pub fn set_func(&mut self, func_def: Rc<FuncDef>) {
+    self.func = Some(func_def);
   }
 
   /// 定义父 Block 属于一个 while 循环
