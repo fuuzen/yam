@@ -17,9 +17,12 @@ fn main() -> Result<()> {
   // 读取输入文件
   let input = read_to_string(input)?;
   let parser = Parser::new();
-  let ast = parser.parse(&input);
-
-  let content = format!("{:#?}",ast);
+  let parse_res = parser.parse(&input);
+  if parse_res.is_err() {
+    println!("{}", parse_res.unwrap_err());
+    return Ok(());
+  }
+  let content = format!("{:#?}", parse_res.unwrap());
   let mut file = File::create(output)?;
   file.write_all(content.as_bytes())?;
 
