@@ -13,6 +13,7 @@ match {
 
 // .lalrpop 不能用 mod 语句
 use crate::ast::btype::{*};
+use std::rc::Rc;
 
 BType: BType = {
   "int" => BType::Int,
@@ -216,7 +217,7 @@ VarDecl: VarDecl = {
 }
 
 Asgn: Asgn = {
-  <lval: LVal> "=" <expr: Expr> => Asgn{ <> },
+  <lval: LVal> "=" <expr: Expr> ";" => Asgn{ <> },
 }
 
 If: If = {
@@ -240,6 +241,7 @@ While: While = {
 }
 
 Stmt: Stmt = {
+  <Option<Expr>> ";" => Stmt::Expr( <> ),
   <ConstDecl> => Stmt::ConstDecl( <> ),
   <VarDecl> => Stmt::VarDecl( <> ),
   <Asgn> => Stmt::Asgn( <> ),
@@ -267,8 +269,8 @@ Stmts: Vec<Stmt> = {
 
 use crate::ast::block::Block;
 
-Block: Block = {
-  "{" <stmts: Stmts> "}" => Block::new(stmts),
+Block: Rc<Block> = {
+  "{" <stmts: Stmts> "}" => Rc::new(Block::new(stmts)),
 }
 
 /******************************* block 部分 结束 ******************************/
@@ -285,19 +287,19 @@ FuncFParam: FuncFParam = {
   <btype: BType> <ident: Ident> => FuncFParam { <> },
 }
 
-FuncDef: FuncDef = {
-  <btype: BType> <ident: Ident> "(" <func_fparams: VecComma<FuncFParam>> ")" <block: Block> => FuncDef {
+FuncDef: Rc<FuncDef> = {
+  <btype: BType> <ident: Ident> "(" <func_fparams: VecComma<FuncFParam>> ")" <block: Block> => Rc::new(FuncDef{
     func_type: FuncType::BType( btype ),
     ident,
     func_fparams,
     block,
-  },
-  "void" <ident: Ident> "(" <func_fparams: VecComma<FuncFParam>> ")" <block: Block> => FuncDef {
+  }),
+  "void" <ident: Ident> "(" <func_fparams: VecComma<FuncFParam>> ")" <block: Block> => Rc::new(FuncDef {
     func_type: FuncType::Void,
     ident,
     func_fparams,
     block,
-  },
+  }),
 }
 
 FuncCall: FuncCall = {
@@ -312,7 +314,7 @@ use crate::ast::track::{*};
 Def: Def = {
   <ConstDecl> => Def::ConstDecl( <> ),
   <VarDecl> => Def::VarDecl( <> ),
-  // <FuncDef> => Def::FuncDef( <> ),
+  <FuncDef> => Def::FuncDef( <> ),
 }
 
 /* 定义为 pub 导出语法解析器 */

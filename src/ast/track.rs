@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use super::func::FuncDef;
 use super::block::Block;
 use super::stmt::{ConstDecl, VarDecl};
@@ -6,12 +8,12 @@ use super::stmt::{ConstDecl, VarDecl};
 pub enum Def {
   ConstDecl(ConstDecl),
   VarDecl(VarDecl),
-  Func(FuncDef),
+  FuncDef(Rc<FuncDef>),
 }
 
 #[derive(Debug)]
 pub struct Track {
   pub defs: Option<Vec<Def>>,
   pub ident: String, 
-  pub block: Block,
+  pub block: Rc<Block>,
 }

@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use super::block::Block;
 use super::{btype::{BType, LVal}, expr::Expr};
 
@@ -51,10 +53,11 @@ pub struct While {
 
 #[derive(Debug)]
 pub enum Stmt {
+  Expr(Option<Expr>),
   ConstDecl(ConstDecl),
   VarDecl(VarDecl),
   Asgn(Asgn),
-  Block(Block),
+  Block(Rc<Block>),
   If(If),
   Else(Else),
   While(While),

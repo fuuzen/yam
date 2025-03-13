@@ -1,3 +1,5 @@
+use std::fmt;
+
 /// 每一种 Base Type 的默认初始值
 pub const INT_DEFAULT: RVal = RVal::Int(0);
 
@@ -6,6 +8,15 @@ pub const INT_DEFAULT: RVal = RVal::Int(0);
 pub enum BType {
   Int,
   Bool,
+}
+
+impl fmt::Display for BType {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
+      BType::Int => write!(f, "int"),
+      BType::Bool => write!(f, "bool"),
+    }
+  }
 }
 
 /// Left Value，左值

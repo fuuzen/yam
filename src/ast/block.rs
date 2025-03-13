@@ -6,7 +6,7 @@ pub type BlockId = u64;
 
 pub static NEXT_ID: AtomicU64 = AtomicU64::new(0);
 
-/// 追踪 Block 作用域内所有声明的函数、常量、变量的值的 Block 的状态
+/// Block 的 AST
 #[derive(Debug)]
 pub struct Block {
   pub stmts: Vec<Stmt>,

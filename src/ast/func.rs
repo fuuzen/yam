@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use super::{btype::BType, expr::Expr, block::Block};
 
 #[derive(Debug)]
@@ -17,7 +19,7 @@ pub struct FuncDef {
   pub func_type: FuncType,
   pub ident: String,
   pub func_fparams: Vec<FuncFParam>,
-  pub block: Block,
+  pub block: Rc<Block>,
 }
 
 #[derive(Debug)]
