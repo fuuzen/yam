@@ -1,3 +1,5 @@
+pub mod calc;
+
 // use midi_file::MidiFile;
 // use midi_file::core::{Channel, Clocks, DurationName, NoteNumber, Velocity};
 // use midi_file::file::{QuartersPerMinute, Track};
@@ -45,6 +47,12 @@ impl Interpreter {
     Ok(self.scope_table.get(&block_id).ok_or_else(|| Error::RuntimeError(format!("can't get BlockScope of this block: {}", block_id))).unwrap().clone())
   }
 
+  /// 获取指定非函数 Symbol 的值
+  pub fn get_val(&self, symbol: &Symbol) -> Result<RVal, Error> {
+    let Symbol{ const_, btype, func_def, block_id } = symbol;
+    
+  }
+
   /// 进行赋值操作
   pub fn asgn(&mut self, symbol: &Symbol, value: RVal) -> Result<(), Error> {
     match value {
@@ -55,8 +63,8 @@ impl Interpreter {
     Ok(())
   }
 
-  /// 执行一段函数
-  pub fn func_call(&mut self, func_call: Rc<FuncCall>) -> Result<(), Error> {
+  /// 执行一段返回结果为 int 类型的函数
+  pub fn call_int_func(&mut self, func_call: &FuncCall) -> Result<i32, Error> {
     let mut cur_block_id = self.current_block_id;
 
     let mut res_scope = self.get_scope(cur_block_id);
@@ -107,7 +115,7 @@ impl Interpreter {
     }
     // self.current_block_id = ;
 
-    Ok(())
+    Ok(0)
   }
 
   pub fn interpret_track(&self, track: &Track) -> () {
