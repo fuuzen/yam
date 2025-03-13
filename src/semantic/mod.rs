@@ -75,7 +75,7 @@ impl Analyzer {
         return Err(res_scope.err().unwrap());
       }
 
-      let res = res_scope.unwrap().decl(&const_decl.btype, ident, true);
+      let res = res_scope.unwrap().decl(&const_decl.btype, ident, true, &self.current_block_id);
       if res.is_err() {
         return Err(res.err().unwrap());
       }
@@ -93,7 +93,7 @@ impl Analyzer {
         return Err(res_scope.err().unwrap());
       }
 
-      let res = res_scope.unwrap().decl(&var_decl.btype, ident, false);
+      let res = res_scope.unwrap().decl(&var_decl.btype, ident, false, &self.current_block_id);
       if res.is_err() {
         return Err(res.err().unwrap());
       }
@@ -427,7 +427,7 @@ impl Analyzer {
     }
     let mut scope = res_scope.unwrap();
 
-    let mut res = scope.func_def(func_def.clone());
+    let mut res = scope.func_def(func_def.clone(), &self.current_block_id);
     if res.is_err() {
       return Err(res.err().unwrap());
     }
@@ -453,7 +453,7 @@ impl Analyzer {
 
     for param in &func_def.func_fparams {
       let FuncFParam{btype, ident} = param;
-      res = scope.decl(btype, ident, false);  /* 函数没有父级 Block，无需检查上层 */
+      res = scope.decl(btype, ident, false, &self.current_block_id);  /* 函数没有父级 Block，无需检查上层 */
       if res.is_err() {
         return Err(res.err().unwrap());
       }
@@ -498,7 +498,7 @@ impl Analyzer {
           Def::ConstDecl( const_decl ) => {
             let ConstDecl{btype, const_defs} = const_decl;
             for const_def in const_defs {
-              res = scope.decl(btype, &const_def.ident, true);  /* track 没有父级 Block，无需检查上层 */
+              res = scope.decl(btype, &const_def.ident, true, &self.current_block_id);  /* track 没有父级 Block，无需检查上层 */
               if res.is_err() {
                 return Err(res.err().unwrap());
               }
@@ -507,14 +507,14 @@ impl Analyzer {
           Def::VarDecl( var_decl ) => {
             let VarDecl{btype, var_defs} = var_decl;
             for const_def in var_defs {
-              res = scope.decl(btype, &const_def.ident, false);  /* track 没有父级 Block，无需检查上层 */
+              res = scope.decl(btype, &const_def.ident, false, &self.current_block_id);  /* track 没有父级 Block，无需检查上层 */
               if res.is_err() {
                 return Err(res.err().unwrap());
               }
             }
           },
           Def::FuncDef( func_def ) => {
-            res = scope.func_def(func_def.clone());
+            res = scope.func_def(func_def.clone(), &self.current_block_id);
             if res.is_err() {
               return Err(res.err().unwrap());
             }

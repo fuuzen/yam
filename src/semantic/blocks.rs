@@ -37,4 +37,9 @@ impl Blocks {
     let err: String = format!("can't find current block");
     self.block_table.get(block_id).ok_or(Error::InternalError(err))
   }
+
+  /// 获取整个 block_table，用于交给解释器执行
+  pub fn get_block_table(&self) -> &HashMap<BlockId, Rc<Block>> {
+    &self.block_table
+  }
 }

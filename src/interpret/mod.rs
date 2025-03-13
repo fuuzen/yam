@@ -2,22 +2,115 @@
 // use midi_file::core::{Channel, Clocks, DurationName, NoteNumber, Velocity};
 // use midi_file::file::{QuartersPerMinute, Track};
 
-use crate::semantic::{blocks::Blocks, scope::Scopes};
+use std::{collections::HashMap, rc::Rc};
 
+use crate::ast::btype::RVal;
+use crate::ast::func::FuncFParam;
+use crate::error::Error;
+
+use crate::{ast::{block::{Block, BlockId}, func::FuncCall, track::Track}, semantic::{blocks::Blocks, scope::{BlockScope, Scopes}, symbol::Symbol}};
+
+/// 解释器
 pub struct Interpreter {
-  blocks: Blocks,
-  scopes: Scopes,
+  /// 指向当前分析检查到的 Block 的 Id
+  current_block_id: BlockId,
+
+  /// 根据 BlockId 快速定位到 Rc<Block>
+  block_table: HashMap<BlockId, Rc<Block>>,
+
+  /// 根据 BlockId 快速定位到 BlockScope
+  scope_table: HashMap<BlockId, BlockScope>,
+
+  /// int 类型符号和他的具体值的哈希表
+  int_table: HashMap<Symbol, i32>,
 }
 
 impl Interpreter {
   pub fn new(blocks: Blocks, scopes: Scopes) -> Self {
     Self {
-      blocks,
-      scopes
+      current_block_id: 0,
+      block_table: blocks.get_block_table().clone(),
+      scope_table: scopes.get_scope_table().clone(),
+      int_table: HashMap::new(),
     }
   }
 
-  pub fn run(&self, _input: &str) -> () {
+  /// 根据给定 BlockId 获取 Rc<Block>
+  pub fn get_block(&self, block_id: BlockId) -> Result<Rc<Block>, Error> {
+    Ok(self.block_table.get(&block_id).ok_or_else(|| Error::RuntimeError(format!("can't get this block: {}", block_id))).unwrap().clone())
+  }
+
+  /// 根据给定 BlockId 获取 BlockScope
+  pub fn get_scope(&self, block_id: BlockId) -> Result<BlockScope, Error> {
+    Ok(self.scope_table.get(&block_id).ok_or_else(|| Error::RuntimeError(format!("can't get BlockScope of this block: {}", block_id))).unwrap().clone())
+  }
+
+  /// 进行赋值操作
+  pub fn asgn(&mut self, symbol: &Symbol, value: RVal) -> Result<(), Error> {
+    match value {
+      RVal::Int(val) => {
+        self.int_table.entry(symbol.clone()).and_modify(|v| *v = val).or_insert(val);
+      }
+    }
+    Ok(())
+  }
+
+  /// 执行一段函数
+  pub fn func_call(&mut self, func_call: Rc<FuncCall>) -> Result<(), Error> {
+    let mut cur_block_id = self.current_block_id;
+
+    let mut res_scope = self.get_scope(cur_block_id);
+    if res_scope.is_err() {
+      return Err(res_scope.err().unwrap());
+    }
+    let mut scope = res_scope.unwrap();
+    
+    let mut res_symbol = scope.get_symbol(&func_call.ident);
+
+    let mut res_block = self.get_block(cur_block_id);
+    if res_block.is_err() {
+      return Err(res_block.err().unwrap());
+    }
+    
+    let mut parent_block_id_  = res_block.unwrap().parrent_id;
+
+    while res_symbol.is_none() && parent_block_id_.is_some() {
+      cur_block_id = parent_block_id_.unwrap();
+  
+      res_scope = self.get_scope(cur_block_id);
+      if res_scope.is_err() {
+        return Err(res_scope.err().unwrap());
+      }
+      scope = res_scope.unwrap();
+      
+      res_symbol = scope.get_symbol(&func_call.ident);
+
+      res_block = self.get_block(cur_block_id);
+      if res_block.is_err() {
+        return Err(res_block.err().unwrap());
+      }
+      
+      parent_block_id_  = res_block.unwrap().parrent_id;
+    }
+
+    if res_symbol.is_none() {
+      /* 不应该发生，在语义检查阶段就被排除 */
+      return Err(Error::RuntimeError(format!("can't find this func: {}", func_call.ident)));
+    }
+    let symbol = res_symbol.unwrap().clone();
+    
+    let func_def = symbol.func_def.as_ref().unwrap();
+    for i in 0..func_def.func_fparams.len() {
+      let param = &func_def.func_fparams[i];
+      let FuncFParam{btype, ident} = param;
+      let expr = &func_call.func_rparams[i];
+    }
+    // self.current_block_id = ;
+
+    Ok(())
+  }
+
+  pub fn interpret_track(&self, track: &Track) -> () {
     // let mut midi_file = MidiFile::new();
     // let mut track = Track::default();
     // track.push_tempo(

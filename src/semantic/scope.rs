@@ -9,7 +9,7 @@ use crate::error::Error;
 
 use super::symbol::Symbol;
 
-
+#[derive(Clone)]
 pub struct BlockScope {
   symbol_table: HashMap<String, Symbol>,
 
@@ -42,11 +42,11 @@ impl BlockScope {
 
   /// 声明一个常量或变量。
   /// 作用域检查仅限于本 Block，故可以遮蔽上层 Block 的同名常量。
-  pub fn decl(&mut self, btype: &BType, ident: &String, const_: bool) -> Result<(), Error> {
+  pub fn decl(&mut self, btype: &BType, ident: &String, const_: bool, block_id: &BlockId) -> Result<(), Error> {
     if self.symbol_table.get(ident).is_none() {
       self.symbol_table.insert(
         ident.clone(),
-        Symbol::from_btype(btype, const_)
+        Symbol::from_btype(btype, const_, *block_id)
       );
       Ok(())
     } else {
@@ -56,11 +56,11 @@ impl BlockScope {
 
   /// 声明并定义一个函数。
   /// 作用域检查仅限于本 Block，故可以遮蔽上层 Block 的同名函数
-  pub fn func_def(&mut self, func_def: Rc<FuncDef>) -> Result<(), Error> {
+  pub fn func_def(&mut self, func_def: Rc<FuncDef>, block_id: &BlockId) -> Result<(), Error> {
     if self.symbol_table.get(&func_def.ident).is_none() {
       self.symbol_table.insert(
         func_def.ident.clone(),
-        Symbol::new_func(func_def)
+        Symbol::new_func(func_def, *block_id)
       );
       Ok(())
     } else {
@@ -126,6 +126,11 @@ impl BlockScope {
       Ok(true)
     }
   }
+
+  /// 尝试根据 identity 获取一个符号的 Option
+  pub fn get_symbol(&self, ident: &String) -> Option<&Symbol> {
+    self.symbol_table.get(ident)
+  }
 }
 
 pub struct Scopes {
@@ -157,5 +162,10 @@ impl Scopes {
   /// 获取给定 BlockId 的 &mut BlockScope
   pub fn get_scope(&mut self, block_id: &BlockId) -> Result<&mut BlockScope, Error> {
     self.scope_table.get_mut(block_id).ok_or(Error::InternalError(format!("can't find the scope of this block: {}", block_id)))
+  }
+
+  /// 获取整个 scope_table，用于交给解释器执行
+  pub fn get_scope_table(&self) -> &HashMap<BlockId, BlockScope> {
+    &self.scope_table
   }
 }
