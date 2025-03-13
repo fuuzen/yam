@@ -2,13 +2,19 @@
 // use midi_file::core::{Channel, Clocks, DurationName, NoteNumber, Velocity};
 // use midi_file::file::{QuartersPerMinute, Track};
 
-pub struct Interpreter {
+use crate::semantic::{blocks::Blocks, scope::Scopes};
 
+pub struct Interpreter {
+  blocks: Blocks,
+  scopes: Scopes,
 }
 
 impl Interpreter {
-  pub fn new() -> Self {
-    Self {}
+  pub fn new(blocks: Blocks, scopes: Scopes) -> Self {
+    Self {
+      blocks,
+      scopes
+    }
   }
 
   pub fn run(&self, _input: &str) -> () {

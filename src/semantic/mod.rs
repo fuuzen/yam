@@ -469,7 +469,8 @@ impl Analyzer {
   }
 
   /// 以 track 为单位进行语义检查
-  pub fn track_check(&mut self, track: &Track) -> Result<(), Error> {
+  /// 检查无误后返回 Blocks 和 Scopes 供解释器读取
+  pub fn track_check(&mut self, track: &Track) -> Result<(Blocks, Scopes), Error> {
     self.set_current_block(track.block.block_id);
 
     let mut blocks = Blocks::new();
@@ -526,6 +527,6 @@ impl Analyzer {
     if res.is_err() {
       return Err(res.err().unwrap());
     }
-    Ok(())
+    Ok((blocks, scopes))
   }
 }

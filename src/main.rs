@@ -1,7 +1,7 @@
 use std::env::args;
 use std::fs::read_to_string;
 use std::io::Result;
-use yam::{Parser, SemanticAnalyzer};
+use yam::{SyntacticAnalyzer, SemanticAnalyzer};
 use std::fs::File;
 use std::io::Write;
 
@@ -17,8 +17,10 @@ fn main() -> Result<()> {
   // 读取输入文件
   let input = read_to_string(input)?;
 
+  // 创建词法&语法分析器
+  let parser = SyntacticAnalyzer::new();
+
   // 词法&语法解析
-  let parser = Parser::new();
   let parse_res = parser.parse(&input);
   if parse_res.is_err() {
     println!("{}", parse_res.unwrap_err());
@@ -31,15 +33,22 @@ fn main() -> Result<()> {
   let mut file = File::create(output)?;
   file.write_all(content.as_bytes())?;
 
-  // 语义检查
+  // 创建语义分析器
   let mut semantic_analyzer = SemanticAnalyzer::new();
 
+  // 语义检查
   let res = semantic_analyzer.track_check(track);
   if res.is_err() {
-    println!("{}", res.unwrap_err());
+    println!("{}", res.err().unwrap());
     return Ok(());
   }
   println!("Semantic check successflly");
+
+  // 解释执行
+  let interpreter = {
+    let (blocks, scopes) = res.unwrap();
+    yam::Interpreter::new(blocks, scopes)
+  };
 
   Ok(())
 }

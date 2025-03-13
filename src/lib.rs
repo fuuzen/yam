@@ -1,9 +1,9 @@
 mod ast;
-mod parse;
+mod syntactic;
 mod semantic;
 mod interpret;
 mod error;
 
-pub use parse::Parser as Parser;
+pub use syntactic::Analyzer as SyntacticAnalyzer;
 pub use semantic::Analyzer as SemanticAnalyzer;
 pub use interpret::Interpreter as Interpreter;

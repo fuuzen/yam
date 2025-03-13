@@ -4,11 +4,11 @@ use yam::{TrackParser, Token};
 use crate::ast::track::Track;
 use crate::error::Error;
 
-pub struct Parser {
+pub struct Analyzer {
   track_parser: TrackParser,
 }
 
-impl Parser {
+impl Analyzer {
   pub fn new() -> Self {
     Self {
       track_parser: TrackParser::new(),
