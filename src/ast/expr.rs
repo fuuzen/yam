@@ -3,7 +3,7 @@ use super::{btype::LVal, func::FuncCall};
 pub type IntConst = i32;
 pub type Expr = LOrExpr;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum UnaryOp {
   Plus,
   Minus,

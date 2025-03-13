@@ -42,7 +42,7 @@ Return        ::= "return" [Expr] ";"                   /* return */
 Stmt ::= Block
        | Decl
        | Asgn
-       | [Expr] ";"   /* 可能用于单纯的函数调用 */
+       | [Expr] ";"   /* 可能用于单纯的函数调用，以及单纯的 ';' 符号 */
        | If
        | While
        | Break

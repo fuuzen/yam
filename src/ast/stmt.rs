@@ -53,7 +53,7 @@ pub struct While {
 
 #[derive(Debug)]
 pub enum Stmt {
-  Expr(Expr),
+  Expr(Option<Expr>),
   ConstDecl(ConstDecl),
   VarDecl(VarDecl),
   Asgn(Asgn),
