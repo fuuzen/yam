@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::block::Block;
@@ -57,7 +58,7 @@ pub enum Stmt {
   ConstDecl(ConstDecl),
   VarDecl(VarDecl),
   Asgn(Asgn),
-  Block(Rc<Block>),
+  Block(Rc<RefCell<Block>>),
   If(If),
   Else(Else),
   While(While),

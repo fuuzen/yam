@@ -68,7 +68,7 @@ impl Analyzer {
   /// 常量声明的检查
   pub fn const_decl_check(&mut self, scopes: &mut Scopes, const_decl: &ConstDecl) -> Result<(), Error> {
     for const_def in &const_decl.const_defs {
-      let ConstDef{ident, expr} = const_def;
+      let ConstDef{ident, ..} = const_def;
 
       let res_scope = scopes.get_scope(&self.current_block_id);
       if res_scope.is_err() {
@@ -86,7 +86,7 @@ impl Analyzer {
   /// 变量声明的检查
   pub fn var_decl_check(&mut self, scopes: &mut Scopes, var_decl: &VarDecl) -> Result<(), Error> {
     for var_def in &var_decl.var_defs {
-      let VarDef{ident, expr_} = var_def;
+      let VarDef{ident, ..} = var_def;
 
       let res_scope = scopes.get_scope(&self.current_block_id);
       if res_scope.is_err() {
@@ -104,7 +104,7 @@ impl Analyzer {
   /// 检查对一个变量 LVal 的赋值是否合法。
   /// 从这一级 Block 开始不断往上层 Block 检查符号是否存在且合法。
   /// 类型检查通过调用表达式检查实现，即检查表达式结果类型。
-  pub fn asgn_check(&mut self, blocks: &mut Blocks, scopes: &mut Scopes, asgn: &Asgn) -> Result<(), Error> {
+  pub fn asgn_check(&mut self, blocks: &mut Blocks, scopes: &mut Scopes, asgn: &mut Asgn) -> Result<(), Error> {
     let cur_block_id = self.current_block_id;
 
     let res_scope = scopes.get_scope(&cur_block_id);
@@ -112,7 +112,7 @@ impl Analyzer {
       return Err(res_scope.err().unwrap());
     }
     
-    let res_bool = res_scope.unwrap().asgn_check(&asgn.lval);
+    let res_bool = res_scope.unwrap().asgn_check(&mut asgn.lval);
     if res_bool.is_err() {
       return Err(res_bool.err().unwrap());
     }
@@ -122,11 +122,11 @@ impl Analyzer {
       if res_block.is_err() {
         return Err(res_block.err().unwrap());
       }
-      let parent_block_id = res_block.unwrap().parrent_id;
+      let parent_block_id = res_block.unwrap().borrow().parrent_id;
       
       if parent_block_id.is_none() {
         let ident = match asgn.lval {
-          LVal::Ident(ref ident) => ident,
+          LVal{ref ident, ..} => ident,
         };
         return Err(Error::SemanticError(format!("{} is not defined", ident)));
       }
@@ -147,7 +147,7 @@ impl Analyzer {
 
   /// 变量或常量调用的检查。
   /// 从这一级 Block 开始不断往上层 Block 检查符号是否存在。
-  pub fn lval_check(&mut self, blocks: &mut Blocks, scopes: &mut Scopes, lval: &LVal) -> Result<(), Error> {
+  pub fn lval_check(&mut self, blocks: &mut Blocks, scopes: &mut Scopes, lval: &mut LVal) -> Result<(), Error> {
     let cur_block_id = self.current_block_id;
     
     let res_scope = scopes.get_scope(&cur_block_id);
@@ -166,11 +166,11 @@ impl Analyzer {
         return Err(res_block.err().unwrap());
       }
 
-      let parent_block_id = res_block.unwrap().parrent_id;
+      let parent_block_id = res_block.unwrap().borrow().parrent_id;
       
       if parent_block_id.is_none() {
         let ident = match lval {
-          LVal::Ident(ident) => ident,
+          LVal{ident, ..} => ident,
         };
         return Err(Error::SemanticError(format!("{} is not defined", ident)));
       }
@@ -213,7 +213,7 @@ impl Analyzer {
         return Err(res_block.err().unwrap());
       }
 
-      let parent_block_id = res_block.unwrap().parrent_id;
+      let parent_block_id = res_block.unwrap().borrow().parrent_id;
       if parent_block_id.is_none() {
         return Err(Error::SemanticError(format!("{} is not defined", func_call.ident)));
       }
@@ -257,7 +257,7 @@ impl Analyzer {
       return Err(res_block.err().unwrap());
     }
 
-    let mut parent_block_id = res_block.clone().unwrap().parrent_id;
+    let mut parent_block_id = res_block.clone().unwrap().borrow().parrent_id;
 
     while parent_block_id.is_some() {
       cur_block_id = parent_block_id.unwrap();
@@ -267,11 +267,12 @@ impl Analyzer {
         return Err(res_block.err().unwrap());
       }
   
-      parent_block_id = res_block.clone().unwrap().parrent_id;
+      parent_block_id = res_block.clone().unwrap().borrow().parrent_id;
     }
 
-    let block_ = res_block.clone().unwrap();
-    let func_def_ = block_.func.as_ref();
+    let block_ = res_block.unwrap().clone();
+    let block = block_.borrow();
+    let func_def_ = block.func.as_ref();
 
     if func_def_.is_none() {
       return Err(Error::SemanticError(format!("'return' can't be used outside a function")));
@@ -299,7 +300,7 @@ impl Analyzer {
   }
 
   /// 以 Stmt 为单位进行语义检查
-  pub fn stmt_check(&mut self, blocks: &mut Blocks, scopes: &mut Scopes, stmt: &Stmt) -> Result<(), Error> {
+  pub fn stmt_check(&mut self, blocks: &mut Blocks, scopes: &mut Scopes, stmt: &mut Stmt) -> Result<(), Error> {
     let cur_block_id = self.current_block_id;
 
     match stmt {
@@ -328,7 +329,7 @@ impl Analyzer {
         }
       },
       Stmt::Asgn( asgn ) => {
-        let res = self.asgn_check(blocks, scopes, &asgn);
+        let res = self.asgn_check(blocks, scopes, &mut asgn);
         if res.is_err() {
           return Err(res.err().unwrap());
         }
@@ -340,7 +341,7 @@ impl Analyzer {
         }
       },
       Stmt::Block( block ) => {
-        self.set_current_block(block.block_id);
+        self.set_current_block(block.borrow().block_id);
 
         let mut res = blocks.add_block(block.clone());
         if res.is_err() {
@@ -367,7 +368,7 @@ impl Analyzer {
 
         self.enter_loop();
 
-        res = self.stmt_check(blocks, scopes, &while_.body);
+        res = self.stmt_check(blocks, scopes, &mut &while_.body);
         if res.is_err() {
           return Err(res.err().unwrap());
         }
@@ -406,10 +407,11 @@ impl Analyzer {
       return Err(res_block.err().unwrap());
     }
 
-    let stmts = &res_block.unwrap().clone().stmts;
+    let block = res_block.unwrap().clone();
+    let mut stmts = &block.borrow_mut().stmts;
 
-    for stmt in stmts {
-      let res = self.stmt_check(blocks, scopes, &stmt);
+    for mut stmt in stmts.iter_mut() {
+      let res = self.stmt_check(blocks, scopes, &mut stmt);
       if res.is_err() {
         return Err(res.err().unwrap());
       }
@@ -433,7 +435,7 @@ impl Analyzer {
     }
 
     let cur_block_id = self.current_block_id;
-    self.set_current_block(func_def.block.block_id);
+    self.set_current_block(func_def.block.borrow().block_id);
 
     res = blocks.add_block(func_def.block.clone());
     if res.is_err() {
@@ -471,7 +473,7 @@ impl Analyzer {
   /// 以 track 为单位进行语义检查
   /// 检查无误后返回 Blocks 和 Scopes 供解释器读取
   pub fn track_check(&mut self, track: &Track) -> Result<(Blocks, Scopes), Error> {
-    self.set_current_block(track.block.block_id);
+    self.set_current_block(track.block.borrow().block_id);
 
     let mut blocks = Blocks::new();
     let mut res = blocks.add_block(track.block.clone());

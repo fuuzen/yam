@@ -56,4 +56,3 @@ impl Block {
     self.while_ = true;
   }
 }
-

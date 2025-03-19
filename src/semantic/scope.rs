@@ -46,7 +46,7 @@ impl BlockScope {
     if self.symbol_table.get(ident).is_none() {
       self.symbol_table.insert(
         ident.clone(),
-        Symbol::from_btype(btype, const_, *block_id)
+        Symbol::new_val(btype, const_, *block_id)
       );
       Ok(())
     } else {
@@ -72,9 +72,9 @@ impl BlockScope {
   /// 若这一级 Block 中不存在该变量的符号，返回值为假，上层 Block 还需要继续检查。
   /// 由于目前 Base Type 只有 int(i32)，不需要赋值的类型检查。
   /// 类型检查放在表达式的检查中，即检查表达式结果类型。
-  pub fn asgn_check(&self, lval: &LVal) -> Result<bool, Error> {
+  pub fn asgn_check(&self, lval: &mut LVal) -> Result<bool, Error> {
     let ident = match lval {
-      LVal::Ident(ident) => ident
+      LVal {ident, ..} => ident
     };
     let symbol_ = self.symbol_table.get(ident);
     if symbol_.is_some() {
@@ -84,6 +84,7 @@ impl BlockScope {
         if symbol_.unwrap().const_ {
           Err(Error::SemanticError(format!("cannot assign to constant {}", *ident)))
         } else {
+          lval.rval = symbol_.unwrap().rval.clone();
           Ok(true)
         }
       }
@@ -94,9 +95,9 @@ impl BlockScope {
 
   /// 变量或常量调用的检查。
   /// 若这一级 Block 中不存在该变量或常量的符号，返回值为假，上层 Block 还需要继续检查。
-  pub fn lval_check(&self, lval: &LVal) -> Result<bool, Error> {
+  pub fn lval_check(&self, lval: &mut LVal) -> Result<bool, Error> {
     let ident = match lval {
-      LVal::Ident(ident) => ident,
+      LVal {ident, ..} => ident,
     };
     let k = ident.clone();
     let symbol_ = self.symbol_table.get(&k);
@@ -105,6 +106,7 @@ impl BlockScope {
     } else if symbol_.unwrap().func_def.is_some() {
       Err(Error::SemanticError(format!("{} is a function at this scope", *ident)))
     } else {
+      lval.rval = symbol_.unwrap().rval.clone();
       Ok(true)
     }
   }

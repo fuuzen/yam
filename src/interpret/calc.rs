@@ -38,9 +38,9 @@ impl ExprCalculator {
             
           },
           PrimaryExpr::Number(v) => {
-            
+            v.clone()
           },
-        }
+        };
       }
     }
     Ok(0)

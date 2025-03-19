@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::func::FuncDef;
@@ -15,5 +16,5 @@ pub enum Def {
 pub struct Track {
   pub defs: Option<Vec<Def>>,
   pub ident: String, 
-  pub block: Rc<Block>,
+  pub block: Rc<RefCell<Block>>,
 }

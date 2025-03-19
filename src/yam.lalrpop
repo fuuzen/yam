@@ -14,6 +14,7 @@ match {
 // .lalrpop 不能用 mod 语句
 use crate::ast::btype::{*};
 use std::rc::Rc;
+use std::cell::RefCell;
 
 BType: BType = {
   "int" => BType::Int,
@@ -26,7 +27,10 @@ Ident: String = {
 }
 
 LVal: LVal = {
-  <Ident> => LVal::Ident( <> ),
+  <ident: Ident> => LVal {
+    ident,
+    rval: None,
+  },
   /* TODO: 支持数组，即左值支持下标 */
 }
 
@@ -104,7 +108,7 @@ Expr: Expr = {
 
 PrimaryExpr: PrimaryExpr = {
   "(" <Expr> ")" => PrimaryExpr::Expr( <> ),
-  <Ident> => PrimaryExpr::LVal( LVal::Ident( <> ) ),
+  <LVal> => PrimaryExpr::LVal( <> ),
   <Number> => PrimaryExpr::Number( <> ),
   <FuncCall> => PrimaryExpr::FuncCall( <> ),
 }
@@ -269,8 +273,8 @@ Stmts: Vec<Stmt> = {
 
 use crate::ast::block::Block;
 
-Block: Rc<Block> = {
-  "{" <stmts: Stmts> "}" => Rc::new(Block::new(stmts)),
+Block: Rc<RefCell<Block>> = {
+  "{" <stmts: Stmts> "}" => Rc::new(RefCell::new(Block::new(stmts))),
 }
 
 /******************************* block 部分 结束 ******************************/

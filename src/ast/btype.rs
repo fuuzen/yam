@@ -1,7 +1,7 @@
-use std::fmt;
+use std::{cell::RefCell, fmt, rc::Rc};
 
 /// 每一种 Base Type 的默认初始值
-pub const INT_DEFAULT: RVal = RVal::Int(0);
+pub const INT_DEFAULT: i32 = 0;
 
 /// 所有的 Base Type 的定义
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -20,13 +20,24 @@ impl fmt::Display for BType {
 }
 
 /// Left Value，左值
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub enum LVal {
-  Ident(String),
+#[derive(Debug, Clone)]
+pub struct LVal {
+  pub ident: String,
+
+  /// 语义检查阶段，若存在该左值的定义，给出其定义
+  pub rval: Option<RVal>,
 }
 
-/// Rightt Value，右值，每一种 Base Type 的具体存储类型
+/// Rightt Value，右值，每一种 Base Type 的具体存储类型。
+/// parse 阶段没有使用，语义检查阶段创建
 #[derive(Debug, Clone)]
 pub enum RVal {
-  Int(i32),
+  Int(Rc<RefCell<i32>>),
+}
+
+impl RVal {
+  /// 语义检查阶段统一初始化为默认值；实际运行时视初始化为普通的赋值。
+  pub fn new_int() -> Self {
+    RVal::Int(Rc::new(RefCell::new(INT_DEFAULT)))
+  }
 }

@@ -47,7 +47,8 @@ impl Interpreter {
     Ok(self.scope_table.get(&block_id).ok_or_else(|| Error::RuntimeError(format!("can't get BlockScope of this block: {}", block_id))).unwrap().clone())
   }
 
-  /// 获取指定非函数 Symbol 的值
+  /// 获取指定非函数 Symbol 的 RVal 值。
+  /// 假定语义检查已经排除了所有潜在问题。
   pub fn get_val(&self, symbol: &Symbol) -> Result<RVal, Error> {
     let Symbol{ const_, btype, func_def, block_id } = symbol;
     

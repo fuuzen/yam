@@ -1,6 +1,7 @@
 use std::rc::Rc;
 use std::hash::{Hash, Hasher};
 
+use crate::ast::btype::RVal;
 use crate::ast::{block::BlockId, btype::BType, func::FuncDef};
 
 /// 表示符号的数据结构，在语义分析时给出，代表唯一的一个符号
@@ -20,6 +21,10 @@ pub struct Symbol {
 
   /// 用于在翻译阶段的哈希表中和所有作用域的符号区分。
   pub block_id: BlockId,
+
+  /// 若为 Base Type，则存储具体的值；
+  /// 若为函数，则该值无意义。
+  pub rval: Option<RVal>,
 }
 
 /// 实现 PartialEq trait，不比较 func_def
@@ -52,16 +57,18 @@ impl Symbol {
       btype: None,
       func_def: Some(func_def),
       block_id,
+      rval: None,
     }
   }
 
   /// 从 Base Type 新建一个常量或变量
-  pub fn from_btype(btype: &BType, const_: bool, block_id: BlockId) -> Self {
+  pub fn new_val(btype: &BType, const_: bool, block_id: BlockId) -> Self {
     Self {
       const_,
       btype: Some(btype.clone()),
       func_def: None,
       block_id,
+      rval: Some(RVal::new_int()),
     }
   }
 }
