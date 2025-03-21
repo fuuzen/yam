@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::atomic::{AtomicU64, Ordering}};
+use std::{cell::RefCell, rc::Rc, sync::atomic::{AtomicU64, Ordering}};
 
 use super::{func::FuncDef, stmt::Stmt};
 
@@ -16,13 +16,13 @@ pub struct Block {
   
   /// parse 阶段还无法给出，只能在语义检查阶段找到其父 Block
   /// 函数定义和 Track 的 Block 的父级认为是没有的 
-  pub parrent_id: Option<BlockId>,
+  pub parrent_id: Rc<RefCell<Option<BlockId>>>,
   
   /// 表明这是一个 while 循环的 Block。目前将该属性设置放在语义检查阶段
-  pub while_: bool,
+  pub while_: Rc<RefCell<bool>>,
   
   /// 表明这是一个函数定义的 Block，它的 Identity。目前将该属性设置放在语义检查阶段
-  pub func: Option<Rc<FuncDef>>,
+  pub func: Rc<RefCell<Option<Rc<FuncDef>>>>,
 }
 
 impl Block {
@@ -30,9 +30,9 @@ impl Block {
     Block {
       stmts,
       block_id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-      parrent_id: None,
-      while_: false,
-      func: None,
+      parrent_id:Rc::new(RefCell::new(None)),
+      while_: Rc::new(RefCell::new(false)),
+      func: Rc::new(RefCell::new(None)),
     }
   }
 
@@ -41,18 +41,23 @@ impl Block {
     self.block_id
   }
 
+  /// 获取 parent_id
+  pub fn get_parent_id(&self) -> Option<BlockId> {
+    self.parrent_id.borrow().clone()
+  }
+
   /// 定义父 Block 的 id
-  pub fn set_parrent_id(&mut self, id: BlockId) {
-    self.parrent_id = Some(id);
+  pub fn set_parrent_id(&self, id: BlockId) {
+    *self.parrent_id.borrow_mut() = Some(id);
   }
 
   /// 定义父 Block 所属于的函数
-  pub fn set_func(&mut self, func_def: Rc<FuncDef>) {
-    self.func = Some(func_def);
+  pub fn set_func(&self, func_def: Rc<FuncDef>) {
+    *self.func.borrow_mut() = Some(func_def);
   }
 
   /// 定义父 Block 属于一个 while 循环
-  pub fn set_while(&mut self) {
-    self.while_ = true;
+  pub fn set_while(&self) {
+    *self.while_.borrow_mut() = true;
   }
 }

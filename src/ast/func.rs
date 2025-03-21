@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 
 use super::{btype::BType, expr::Expr, block::Block};
 
@@ -19,7 +19,7 @@ pub struct FuncDef {
   pub func_type: FuncType,
   pub ident: String,
   pub func_fparams: Vec<FuncFParam>,
-  pub block: Rc<RefCell<Block>>,
+  pub block: Rc<Block>,
 }
 
 #[derive(Debug)]

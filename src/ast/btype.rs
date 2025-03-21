@@ -25,7 +25,20 @@ pub struct LVal {
   pub ident: String,
 
   /// 语义检查阶段，若存在该左值的定义，给出其定义
-  pub rval: Option<RVal>,
+  pub rval: Rc<RefCell<Option<RVal>>>,
+}
+
+impl LVal {
+  pub fn new(ident: String) -> Self {
+    LVal {
+      ident,
+      rval: Rc::new(RefCell::new(None)),
+    }
+  }
+
+  pub fn set_rval(&self, rval: RVal) {
+    *self.rval.borrow_mut() = Some(rval);
+  }
 }
 
 /// Rightt Value，右值，每一种 Base Type 的具体存储类型。

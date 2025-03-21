@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::block::Block;
@@ -42,7 +41,7 @@ pub struct If {
 
 #[derive(Debug)]
 pub struct Else {
-  pub stmt: Box<Stmt>,
+  pub body: Box<Stmt>,
 }
 
 #[derive(Debug)]
@@ -58,7 +57,7 @@ pub enum Stmt {
   ConstDecl(ConstDecl),
   VarDecl(VarDecl),
   Asgn(Asgn),
-  Block(Rc<RefCell<Block>>),
+  Block(Rc<Block>),
   If(If),
   Else(Else),
   While(While),
