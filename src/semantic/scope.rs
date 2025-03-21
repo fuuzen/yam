@@ -68,7 +68,7 @@ impl BlockScope {
     }
   }
 
-  /// 检查对一个变量 LVal 的赋值是否合法。
+  /// 检查对一个变量 LVal 的赋值是否合法。若合法则绑定该 LVal 的 RVal。
   /// 若这一级 Block 中不存在该变量的符号，返回值为假，上层 Block 还需要继续检查。
   /// 由于目前 Base Type 只有 int(i32)，不需要赋值的类型检查。
   /// 类型检查放在表达式的检查中，即检查表达式结果类型。
@@ -84,7 +84,7 @@ impl BlockScope {
         if symbol_.unwrap().const_ {
           Err(Error::SemanticError(format!("cannot assign to constant {}", *ident)))
         } else {
-          lval.set_rval(symbol_.unwrap().rval.clone().unwrap());
+          lval.bind_rval(symbol_.unwrap().rval.clone().unwrap());
           Ok(true)
         }
       }
@@ -93,7 +93,7 @@ impl BlockScope {
     }
   }
 
-  /// 变量或常量调用的检查。
+  /// 变量或常量调用的检查。若合法则绑定该 LVal 的 RVal。
   /// 若这一级 Block 中不存在该变量或常量的符号，返回值为假，上层 Block 还需要继续检查。
   pub fn lval_check(&self, lval: &LVal) -> Result<bool, Error> {
     let ident = match lval {
@@ -106,7 +106,7 @@ impl BlockScope {
     } else if symbol_.unwrap().func_def.is_some() {
       Err(Error::SemanticError(format!("{} is a function at this scope", *ident)))
     } else {
-      lval.set_rval(symbol_.unwrap().rval.clone().unwrap());
+      lval.bind_rval(symbol_.unwrap().rval.clone().unwrap());
       Ok(true)
     }
   }

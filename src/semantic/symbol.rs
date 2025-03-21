@@ -24,7 +24,7 @@ pub struct Symbol {
 
   /// 若为 Base Type，则存储具体的值；
   /// 若为函数，则该值无意义。
-  pub rval: Option<RVal>,
+  pub rval: Option<Rc<RVal>>,
 }
 
 /// 实现 PartialEq trait，不比较 func_def
@@ -68,7 +68,7 @@ impl Symbol {
       btype: Some(btype.clone()),
       func_def: None,
       block_id,
-      rval: Some(RVal::new_int()),
+      rval: Some(Rc::new(RVal::new_int())),
     }
   }
 }

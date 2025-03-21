@@ -24,8 +24,8 @@ impl fmt::Display for BType {
 pub struct LVal {
   pub ident: String,
 
-  /// 语义检查阶段，若存在该左值的定义，给出其定义
-  pub rval: Rc<RefCell<Option<RVal>>>,
+  /// 语义检查阶段，绑定该左值的右值
+  pub rval: Rc<RefCell<Option<Rc<RVal>>>>,
 }
 
 impl LVal {
@@ -36,7 +36,7 @@ impl LVal {
     }
   }
 
-  pub fn set_rval(&self, rval: RVal) {
+  pub fn bind_rval(&self, rval: Rc<RVal>) {
     *self.rval.borrow_mut() = Some(rval);
   }
 }
@@ -52,5 +52,12 @@ impl RVal {
   /// 语义检查阶段统一初始化为默认值；实际运行时视初始化为普通的赋值。
   pub fn new_int() -> Self {
     RVal::Int(Rc::new(RefCell::new(INT_DEFAULT)))
+  }
+
+  /// 赋值 int
+  pub fn set_int(&self, value: i32) {
+    match self {
+      RVal::Int(rval) => *rval.borrow_mut() = value,
+    }
   }
 }

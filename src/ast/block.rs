@@ -4,7 +4,8 @@ use super::{func::FuncDef, stmt::Stmt};
 
 pub type BlockId = u64;
 
-pub static NEXT_ID: AtomicU64 = AtomicU64::new(0);
+/// Block 的 ID 自增器，从 1 开始。
+pub static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 /// Block 的 AST
 #[derive(Debug)]
@@ -15,8 +16,8 @@ pub struct Block {
   pub block_id: BlockId,
   
   /// parse 阶段还无法给出，只能在语义检查阶段找到其父 Block
-  /// 函数定义和 Track 的 Block 的父级认为是没有的 
-  pub parrent_id: Rc<RefCell<Option<BlockId>>>,
+  /// 函数定义和 CompUnit 的 Block 的父级认为是没有的 
+  pub parent_id: Rc<RefCell<Option<BlockId>>>,
   
   /// 表明这是一个 while 循环的 Block。目前将该属性设置放在语义检查阶段
   pub while_: Rc<RefCell<bool>>,
@@ -30,7 +31,18 @@ impl Block {
     Block {
       stmts,
       block_id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-      parrent_id:Rc::new(RefCell::new(None)),
+      parent_id:Rc::new(RefCell::new(None)),
+      while_: Rc::new(RefCell::new(false)),
+      func: Rc::new(RefCell::new(None)),
+    }
+  }
+
+  /// 全局作用域的 Block，Id 为 0。
+  pub fn create_global() -> Self {
+    Block {
+      stmts: vec![],
+      block_id: 0,
+      parent_id:Rc::new(RefCell::new(None)),
       while_: Rc::new(RefCell::new(false)),
       func: Rc::new(RefCell::new(None)),
     }
@@ -43,12 +55,12 @@ impl Block {
 
   /// 获取 parent_id
   pub fn get_parent_id(&self) -> Option<BlockId> {
-    self.parrent_id.borrow().clone()
+    self.parent_id.borrow().clone()
   }
 
   /// 定义父 Block 的 id
-  pub fn set_parrent_id(&self, id: BlockId) {
-    *self.parrent_id.borrow_mut() = Some(id);
+  pub fn set_parent_id(&self, id: BlockId) {
+    *self.parent_id.borrow_mut() = Some(id);
   }
 
   /// 定义父 Block 所属于的函数

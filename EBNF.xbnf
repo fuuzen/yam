@@ -52,4 +52,4 @@ Stmt ::= Block
 
 Block         ::= "{" {Stmt} "}";
 
-Track         ::= {Decl | FuncDef} "track" IDENT Block;
+CompUnit      ::= {Decl | FuncDef} "main" IDENT Block;

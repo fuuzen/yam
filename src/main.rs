@@ -27,9 +27,9 @@ fn main() -> Result<()> {
     return Ok(());
   }
   println!("Lexical syntactic parsed successflly");
-  let track = parse_res.as_ref().unwrap();
+  let comp_unit = parse_res.as_ref().unwrap();
 
-  let content = format!("{:#?}", track);
+  let content = format!("{:#?}", comp_unit);
   let mut file = File::create(output)?;
   file.write_all(content.as_bytes())?;
 
@@ -37,7 +37,7 @@ fn main() -> Result<()> {
   let mut semantic_analyzer = SemanticAnalyzer::new();
 
   // 语义检查
-  let res = semantic_analyzer.track_check(track);
+  let res = semantic_analyzer.check(comp_unit);
   if res.is_err() {
     println!("{}", res.err().unwrap());
     return Ok(());

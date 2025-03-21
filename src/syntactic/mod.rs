@@ -1,22 +1,22 @@
 use lalrpop_util::{lalrpop_mod, ParseError};
 lalrpop_mod!(yam);
-use yam::{TrackParser, Token};
-use crate::ast::track::Track;
+use yam::{CompUnitParser, Token};
+use crate::ast::comp_unit::CompUnit;
 use crate::error::Error;
 
 pub struct Analyzer {
-  track_parser: TrackParser,
+  parser: CompUnitParser,
 }
 
 impl Analyzer {
   pub fn new() -> Self {
     Self {
-      track_parser: TrackParser::new(),
+      parser: CompUnitParser::new(),
     }
   }
 
-  pub fn parse<'input>(&self, input: &'input str) -> Result<Track, Error> {
-    let res: Result<Track, ParseError<usize, Token<'input>, &'static str>> = self.track_parser.parse(input);
+  pub fn parse<'input>(&self, input: &'input str) -> Result<CompUnit, Error> {
+    let res: Result<CompUnit, ParseError<usize, Token<'input>, &'static str>> = self.parser.parse(input);
     if res.is_err() {
       let err: String;
       match res.unwrap_err() {

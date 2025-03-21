@@ -307,9 +307,9 @@ FuncCall: FuncCall = {
 }
 
 /******************************* func 部分 结束 ******************************/
-/******************************* track 部分 开始 ******************************/
+/******************************* comp_unit 部分 开始 ******************************/
 
-use crate::ast::track::{*};
+use crate::ast::comp_unit::{*};
 
 Def: Def = {
   <ConstDecl> => Def::ConstDecl( <> ),
@@ -318,8 +318,8 @@ Def: Def = {
 }
 
 /* 定义为 pub 导出语法解析器 */
-pub Track: Track = {
-  <defs: Option<Vec<Def>>> "track" <ident: Ident> <block: Block> => Track { <> },
+pub CompUnit: CompUnit = {
+  <defs: Option<Vec<Def>>> "main" <ident: Ident> <block: Block> => CompUnit { <> },
 }
 
-/******************************* track 部分 结束 ******************************/
+/******************************* comp_unit 部分 结束 ******************************/

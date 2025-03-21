@@ -13,7 +13,7 @@ use crate::ast::btype::{BType, LVal};
 use crate::ast::expr::LOrExpr;
 use crate::ast::func::{FuncCall, FuncDef, FuncType, FuncFParam};
 use crate::ast::stmt::{Asgn, ConstDecl, ConstDef, Stmt, VarDecl, VarDef};
-use crate::ast::track::{Def, Track};
+use crate::ast::comp_unit::{Def, CompUnit};
 use crate::error::Error;
 
 pub struct Analyzer {
@@ -469,57 +469,34 @@ impl Analyzer {
     Ok(())
   }
 
-  /// 以 track 为单位进行语义检查
+  /// 以 comp_unit 为单位进行语义检查
   /// 检查无误后返回 Blocks 和 Scopes 供解释器读取
-  pub fn track_check(&mut self, track: &Track) -> Result<(Blocks, Scopes), Error> {
-    self.set_current_block(track.block.block_id);
+  pub fn check(&mut self, comp_unit: &CompUnit) -> Result<(Blocks, Scopes), Error> {
+    self.set_current_block(comp_unit.block.block_id);
 
     let mut blocks = Blocks::new();
-    let mut res = blocks.add_block(track.block.clone());
+    let mut scopes = Scopes::new();
+
+    // 全局变量常量的作用域视为一个 Block，这个 Block 没有父级 Block，Id 为 0
+    let mut res = blocks.add_block(comp_unit.block.clone());
     if res.is_err() {
       return Err(res.err().unwrap());
     }
-
-    let mut scopes = Scopes::new();
     res = scopes.add_scope(self.current_block_id);
     if res.is_err() {
       return Err(res.err().unwrap());
     }
 
-    let res_scope = scopes.get_scope(&self.current_block_id);
-    if res_scope.is_err() {
-      return Err(res.err().unwrap());
-    }
-    let scope = res_scope.unwrap();
-
-    let defs_ = &track.defs;
+    let defs_ = &comp_unit.defs;
     if defs_.is_some() {
       for def in defs_.as_ref().unwrap() {
-        match def {
-          Def::ConstDecl( const_decl ) => {
-            let ConstDecl{btype, const_defs} = const_decl;
-            for const_def in const_defs {
-              res = scope.decl(btype, &const_def.ident, true, &self.current_block_id);  /* track 没有父级 Block，无需检查上层 */
-              if res.is_err() {
-                return Err(res.err().unwrap());
-              }
-            }
-          },
-          Def::VarDecl( var_decl ) => {
-            let VarDecl{btype, var_defs} = var_decl;
-            for const_def in var_defs {
-              res = scope.decl(btype, &const_def.ident, false, &self.current_block_id);  /* track 没有父级 Block，无需检查上层 */
-              if res.is_err() {
-                return Err(res.err().unwrap());
-              }
-            }
-          },
-          Def::FuncDef( func_def ) => {
-            res = scope.func_def(func_def.clone(), &self.current_block_id);
-            if res.is_err() {
-              return Err(res.err().unwrap());
-            }
-          },
+        res = match def {
+          Def::ConstDecl( const_decl ) => self.const_decl_check(&mut scopes, const_decl),
+          Def::VarDecl( var_decl ) => self.var_decl_check(&mut scopes, var_decl),
+          Def::FuncDef( func_def ) => self.func_check(&mut blocks, &mut scopes, func_def.clone()),
+        };
+        if res.is_err() {
+          return Err(res.err().unwrap());
         }
       }
     }
