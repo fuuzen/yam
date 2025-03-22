@@ -82,17 +82,23 @@ impl Analyzer {
   /// 常量声明的检查
   pub fn const_decl_check(&mut self, scopes: &mut Scopes, const_decl: &ConstDecl) -> Result<(), Error> {
     for const_def in &const_decl.const_defs {
-      let ConstDef{ident, ..} = const_def;
+      let ConstDef{ident, expr} = const_def;
 
       let res_scope = scopes.get_scope(&self.current_block_id);
       if res_scope.is_err() {
         return Err(res_scope.err().unwrap());
       }
 
-      let res = res_scope.unwrap().decl(&const_decl.btype, ident, true, &self.current_block_id);
+      let mut res = res_scope.unwrap().decl(&const_decl.btype, ident, true, &self.current_block_id);
       if res.is_err() {
         return Err(res.err().unwrap());
       }
+
+      res = self.expr_check(&mut Blocks::new(), scopes, &const_decl.btype, expr);
+      if res.is_err() {
+        return Err(res.err().unwrap());
+      }
+
     }
     Ok(())
   }
@@ -100,16 +106,23 @@ impl Analyzer {
   /// 变量声明的检查
   pub fn var_decl_check(&mut self, scopes: &mut Scopes, var_decl: &VarDecl) -> Result<(), Error> {
     for var_def in &var_decl.var_defs {
-      let VarDef{ident, ..} = var_def;
+      let VarDef{ident, expr_} = var_def;
 
       let res_scope = scopes.get_scope(&self.current_block_id);
       if res_scope.is_err() {
         return Err(res_scope.err().unwrap());
       }
 
-      let res = res_scope.unwrap().decl(&var_decl.btype, ident, false, &self.current_block_id);
+      let mut res = res_scope.unwrap().decl(&var_decl.btype, ident, false, &self.current_block_id);
       if res.is_err() {
         return Err(res.err().unwrap());
+      }
+
+      if expr_.is_some() {
+        res = self.expr_check(&mut Blocks::new(), scopes, &var_decl.btype, expr_.as_ref().unwrap());
+        if res.is_err() {
+          return Err(res.err().unwrap());
+        }
       }
     }
     Ok(())
