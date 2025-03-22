@@ -114,7 +114,7 @@ impl BlockScope {
 
   /// 检查对一个函数的调用是否合法。
   /// 若这一级 Block 中不存在该函数的符号，返回值为 None，上层 Block 还需要继续检查。
-  /// 若存在该函数的符号，返回相应的 Symbol 中的 Rc<FuncDef>。
+  /// 若存在该函数的符号，绑定 FuncDef 给 FuncCall，返回相应的 Symbol 中的 Rc<FuncDef>。
   /// 由于目前 Base Type 只有 int(i32)，检查调用参数是否匹配仅需检查参数数量是否匹配。
   pub fn func_call_check(&self, func_call: &FuncCall) -> Result<Option<Rc<FuncDef>>, Error> {
 
@@ -123,7 +123,7 @@ impl BlockScope {
     }
 
     let (ident, func_rparams) = match func_call {
-      FuncCall{ident, func_rparams} => (ident, func_rparams),
+      FuncCall{ident, func_rparams, ..} => (ident, func_rparams),
     };
     let k = ident.clone();
     let symbol_ = self.symbol_table.get(&k);
@@ -132,6 +132,7 @@ impl BlockScope {
     } else if symbol_.unwrap().func_def.as_ref().unwrap().func_fparams.len() != func_rparams.len() {
       Err(Error::SemanticError(format!("params not match when calling function {}", *ident)))
     } else {
+      func_call.bind_func_def(symbol_.unwrap().func_def.clone().unwrap());
       Ok(Some(symbol_.unwrap().func_def.clone().unwrap()))
     }
   }

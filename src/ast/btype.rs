@@ -36,8 +36,14 @@ impl LVal {
     }
   }
 
+  /// 语义检查阶段绑定右值
   pub fn bind_rval(&self, rval: Rc<RVal>) {
     *self.rval.borrow_mut() = Some(rval);
+  }
+
+  /// 执行阶段获取 int 值
+  pub fn get_int(&self) -> i32 {
+    self.rval.borrow().as_ref().unwrap().get_int()
   }
 }
 
@@ -65,6 +71,13 @@ impl RVal {
   pub fn get_btype(&self) -> BType {
     match self {
       RVal::Int(_) => BType::Int,
+    }
+  }
+
+  /// 获取 int 值
+  pub fn get_int(&self) -> i32 {
+    match self {
+      RVal::Int(rval) => *rval.borrow(),
     }
   }
 }
