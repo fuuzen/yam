@@ -246,7 +246,7 @@ impl Analyzer {
     let len = func_def_.clone().unwrap().func_fparams.len();
     for i in 0..len {
       let expr = &func_call.func_rparams[i];
-      let btype = &func_def_.as_ref().unwrap().func_fparams[i].btype;
+      let btype = &func_def_.as_ref().unwrap().func_fparams[i].get_btype();
       let res = self.expr_check(blocks, scopes, &btype, expr);
       if res.is_err() {
         return Err(res.err().unwrap());
@@ -505,8 +505,8 @@ impl Analyzer {
 
     // 函数参数视为声明的变量，进行声明检查
     for param in &func_def.func_fparams {
-      let FuncFParam{btype, ident} = param;
-      res = scope.decl(btype, ident, false, &self.current_block_id);  /* 函数没有父级 Block，无需检查上层 */
+      let FuncFParam{ident, ..} = param;
+      res = scope.decl(&param.get_btype(), ident, false, &self.current_block_id);  /* 函数没有父级 Block，无需检查上层 */
       if res.is_err() {
         return Err(res.err().unwrap());
       }

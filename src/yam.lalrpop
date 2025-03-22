@@ -284,7 +284,7 @@ FuncType: FuncType = {
 }
 
 FuncFParam: FuncFParam = {
-  <btype: BType> <ident: Ident> => FuncFParam { <> },
+  <btype: BType> <ident: Ident> => FuncFParam::new(btype, ident),
 }
 
 FuncDef: Rc<FuncDef> = {

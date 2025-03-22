@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use super::{btype::BType, expr::Expr, block::Block};
+use super::{block::Block, btype::{BType, RVal}, expr::Expr};
 
 #[derive(Debug)]
 pub enum FuncType {
@@ -8,11 +8,42 @@ pub enum FuncType {
   Void,
 }
 
-#[derive(Debug)]
+/// 相当于在 parse 阶段就绑定好 RVal 为其类型的默认值的 LVal。
+#[derive(Debug, Clone)]
 pub struct FuncFParam {
-  pub btype: BType,
-  pub ident: String, 
+  pub ident: String,
+  pub rval: Rc<RVal>,
 }
+
+impl FuncFParam {
+  /// 初始化为类型 BType 默认值
+  pub fn new(btype: BType, ident: String) -> Self {
+    let rval = match btype {
+      BType::Int => RVal::new_int(),
+      BType::Bool => unimplemented!(),
+    };
+    FuncFParam {
+      ident,
+      rval: Rc::new(rval),
+    }
+  }
+
+  /// 获取 BType
+  pub fn get_btype(&self) -> BType {
+    self.rval.get_btype()
+  }
+
+  /// 执行阶段获取 int 值
+  pub fn get_int(&self) -> i32 {
+    self.rval.get_int()
+  }
+
+  /// 赋值 int
+  pub fn set_int(&self, value: i32) {
+    self.rval.set_int(value);
+  }
+}
+
 
 #[derive(Debug)]
 pub struct FuncDef {

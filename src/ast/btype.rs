@@ -36,6 +36,18 @@ impl LVal {
     }
   }
 
+  /// 具有类型 BType 的初始化，初始化为默认值
+  pub fn new_with_btype(btype: BType, ident: String) -> Self {
+    let rval = match btype {
+      BType::Int => RVal::new_int(),
+      BType::Bool => unimplemented!(),
+    };
+    LVal {
+      ident,
+      rval: Rc::new(RefCell::new(Some(Rc::new(rval)))),
+    }
+  }
+
   /// 语义检查阶段绑定右值
   pub fn bind_rval(&self, rval: Rc<RVal>) {
     *self.rval.borrow_mut() = Some(rval);
@@ -44,6 +56,11 @@ impl LVal {
   /// 执行阶段获取 int 值
   pub fn get_int(&self) -> i32 {
     self.rval.borrow().as_ref().unwrap().get_int()
+  }
+
+  /// 赋值 int
+  pub fn set_int(&self, value: i32) {
+    self.rval.borrow().as_ref().unwrap().set_int(value);
   }
 }
 
