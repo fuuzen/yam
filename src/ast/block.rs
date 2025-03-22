@@ -4,8 +4,8 @@ use super::{func::FuncDef, stmt::Stmt};
 
 pub type BlockId = u64;
 
-/// Block 的 ID 自增器，从 1 开始。
-pub static NEXT_ID: AtomicU64 = AtomicU64::new(1);
+/// Block 的 ID 自增器，从 0 开始。
+pub static NEXT_ID: AtomicU64 = AtomicU64::new(0);
 
 /// Block 的 AST
 #[derive(Debug)]
@@ -31,17 +31,6 @@ impl Block {
     Block {
       stmts,
       block_id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-      parent_id:Rc::new(RefCell::new(None)),
-      while_: Rc::new(RefCell::new(false)),
-      func: Rc::new(RefCell::new(None)),
-    }
-  }
-
-  /// 全局作用域的 Block，Id 为 0。
-  pub fn create_global() -> Self {
-    Block {
-      stmts: vec![],
-      block_id: 0,
       parent_id:Rc::new(RefCell::new(None)),
       while_: Rc::new(RefCell::new(false)),
       func: Rc::new(RefCell::new(None)),

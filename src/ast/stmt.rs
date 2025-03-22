@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use super::block::Block;
+use super::func::FuncDef;
 use super::{btype::{BType, LVal}, expr::Expr};
 
 #[derive(Debug)]
@@ -53,6 +54,7 @@ pub struct While {
 
 #[derive(Debug)]
 pub enum Stmt {
+  FuncDef(Rc<FuncDef>),
   Expr(Option<Expr>),
   ConstDecl(ConstDecl),
   VarDecl(VarDecl),

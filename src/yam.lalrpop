@@ -319,7 +319,19 @@ Def: Def = {
 
 /* 定义为 pub 导出语法解析器 */
 pub CompUnit: CompUnit = {
-  <defs: Option<Vec<Def>>> "main" <ident: Ident> <block: Block> => CompUnit { <> },
+  <defs: Option<Vec<Def>>> => {
+    let stmts = match defs {
+      Some(defs) => defs.into_iter().map(|def| match def {
+        Def::ConstDecl(const_decl) => Stmt::ConstDecl(const_decl),
+        Def::VarDecl(var_decl) => Stmt::VarDecl(var_decl),
+        Def::FuncDef(func_def) => Stmt::FuncDef(func_def),
+      }).collect(),
+      None => vec![],
+    };
+    CompUnit {
+      block: Rc::new(Block::new(stmts)),
+    }
+  },
 }
 
 /******************************* comp_unit 部分 结束 ******************************/

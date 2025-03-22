@@ -13,7 +13,5 @@ pub enum Def {
 
 #[derive(Debug)]
 pub struct CompUnit {
-  pub defs: Option<Vec<Def>>,
-  pub ident: String, 
   pub block: Rc<Block>,
 }

@@ -68,7 +68,7 @@ impl Symbol {
       btype: Some(btype.clone()),
       func_def: None,
       block_id,
-      rval: Some(Rc::new(RVal::new_int())),
+      rval: Some(Rc::new(RVal::new_int())),  // 暂时只有 int 类型
     }
   }
 }

@@ -60,4 +60,11 @@ impl RVal {
       RVal::Int(rval) => *rval.borrow_mut() = value,
     }
   }
+
+  /// 返回变量类型 Btype
+  pub fn get_btype(&self) -> BType {
+    match self {
+      RVal::Int(_) => BType::Int,
+    }
+  }
 }

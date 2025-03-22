@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::ast::block::BlockId;
-use crate::ast::btype::{BType, LVal};
+use crate::ast::btype::{BType, LVal, RVal};
 use crate::ast::func::{FuncCall, FuncDef};
 use crate::ast::stmt::Stmt;
 use crate::error::Error;
@@ -94,38 +94,45 @@ impl BlockScope {
   }
 
   /// 变量或常量调用的检查。若合法则绑定该 LVal 的 RVal。
-  /// 若这一级 Block 中不存在该变量或常量的符号，返回值为假，上层 Block 还需要继续检查。
-  pub fn lval_check(&self, lval: &LVal) -> Result<bool, Error> {
+  /// 若这一级 Block 中不存在该变量或常量的符号，返回值为 None，上层 Block 还需要继续检查。
+  /// 若存在该 Lval 的符号，返回相应的 Symbol 中的 Rc<RVal>。
+  pub fn lval_check(&self, lval: &LVal) -> Result<Option<Rc<RVal>>, Error> {
     let ident = match lval {
       LVal {ident, ..} => ident,
     };
     let k = ident.clone();
     let symbol_ = self.symbol_table.get(&k);
     if symbol_.is_none() {
-      Ok(false)
+      Ok(None)
     } else if symbol_.unwrap().func_def.is_some() {
       Err(Error::SemanticError(format!("{} is a function at this scope", *ident)))
     } else {
       lval.bind_rval(symbol_.unwrap().rval.clone().unwrap());
-      Ok(true)
+      Ok(Some(symbol_.unwrap().rval.clone().unwrap()))
     }
   }
 
   /// 检查对一个函数的调用是否合法。
-  /// 若这一级 Block 中不存在该函数的符号，返回值为假，上层 Block 还需要继续检查。
+  /// 若这一级 Block 中不存在该函数的符号，返回值为 None，上层 Block 还需要继续检查。
+  /// 若存在该函数的符号，返回相应的 Symbol 中的 Rc<FuncDef>。
   /// 由于目前 Base Type 只有 int(i32)，检查调用参数是否匹配仅需检查参数数量是否匹配。
-  pub fn func_call_check(&self, func_call: &FuncCall) -> Result<bool, Error> {
+  pub fn func_call_check(&self, func_call: &FuncCall) -> Result<Option<Rc<FuncDef>>, Error> {
+
+    for i in self.symbol_table.iter() {
+      println!("{}", i.0);
+    }
+
     let (ident, func_rparams) = match func_call {
       FuncCall{ident, func_rparams} => (ident, func_rparams),
     };
     let k = ident.clone();
     let symbol_ = self.symbol_table.get(&k);
     if symbol_.is_none() {
-      Ok(false)
+      Ok(None)
     } else if symbol_.unwrap().func_def.as_ref().unwrap().func_fparams.len() != func_rparams.len() {
       Err(Error::SemanticError(format!("params not match when calling function {}", *ident)))
     } else {
-      Ok(true)
+      Ok(Some(symbol_.unwrap().func_def.clone().unwrap()))
     }
   }
 

@@ -8,15 +8,18 @@ use blocks::Blocks;
 use expr_check::{bool_expr_check, expr_check, int_expr_check};
 use scope::Scopes;
 
-use crate::ast::block::BlockId;
+use crate::ast::block::{Block, BlockId};
 use crate::ast::btype::{BType, LVal};
 use crate::ast::expr::LOrExpr;
 use crate::ast::func::{FuncCall, FuncDef, FuncType, FuncFParam};
 use crate::ast::stmt::{Asgn, ConstDecl, ConstDef, Stmt, VarDecl, VarDef};
-use crate::ast::comp_unit::{Def, CompUnit};
+use crate::ast::comp_unit::CompUnit;
 use crate::error::Error;
 
 pub struct Analyzer {
+  /// 作为全局作用域的 Global Block 的 Id
+  global_block_id: BlockId,
+
   /// 指向当前分析检查到的 Block 的 Id
   current_block_id: BlockId,
 
@@ -28,9 +31,20 @@ pub struct Analyzer {
 impl Analyzer {
   pub fn new() -> Self {
     Self {
+      global_block_id: 0,
       current_block_id: 0,
       current_loop: 0,
     }
+  }
+
+  /// 设置作为全局作用域的 Global Block 的 Id
+  pub fn set_global_block(&mut self, block_id: BlockId) {
+    self.global_block_id = block_id;
+  }
+
+  /// 获取作为全局作用域的 Global Block 的 Id
+  pub fn get_global_block(&self) -> BlockId {
+    self.global_block_id
   }
 
   /// 设置当前分析检查到的 Block 的 Id
@@ -49,7 +63,7 @@ impl Analyzer {
   }
 
   /// 检查表达式是否合法及其返回类型是否匹配。
-  pub fn expr_check_with_type(&mut self, blocks: &mut Blocks, scopes: &mut Scopes, btype: &BType, lor_expr: &LOrExpr) -> Result<(), Error> {
+  pub fn expr_check(&mut self, blocks: &mut Blocks, scopes: &mut Scopes, btype: &BType, lor_expr: &LOrExpr) -> Result<(), Error> {
     match btype {
       BType::Int => {
         int_expr_check(self, blocks, scopes, lor_expr)
@@ -61,7 +75,7 @@ impl Analyzer {
   }
 
   /// 检查表达式是否合法及其返回类型是否匹配。
-  pub fn expr_check(&mut self, blocks: &mut Blocks, scopes: &mut Scopes, lor_expr: &LOrExpr) -> Result<(), Error> {
+  pub fn expr_nontype_check(&mut self, blocks: &mut Blocks, scopes: &mut Scopes, lor_expr: &LOrExpr) -> Result<(), Error> {
     expr_check(self, blocks, scopes, lor_expr)
   }
 
@@ -105,44 +119,23 @@ impl Analyzer {
   /// 从这一级 Block 开始不断往上层 Block 检查符号是否存在且合法。
   /// 类型检查通过调用表达式检查实现，即检查表达式结果类型。
   pub fn asgn_check(&mut self, blocks: &mut Blocks, scopes: &mut Scopes, asgn: &Asgn) -> Result<(), Error> {
-    let cur_block_id = self.current_block_id;
+    let lval = &asgn.lval;
+    let mut res = self.lval_check(blocks, scopes, lval);
+    if res.is_err() {
+      return Err(res.err().unwrap());
+    }
 
-    let res_scope = scopes.get_scope(&cur_block_id);
-    if res_scope.is_err() {
-      return Err(res_scope.err().unwrap());
+    let rval_ = lval.rval.borrow().clone();
+    if rval_.is_none() {
+      return Err(Error::InternalError(format!("{} was declared but RVal of {} was not bound", lval.ident, lval.ident)));
     }
-    
-    let res_bool = res_scope.unwrap().asgn_check(&asgn.lval);
-    if res_bool.is_err() {
-      return Err(res_bool.err().unwrap());
-    }
-    
-    if !res_bool.unwrap() {
-      let res_block = blocks.get_block(&cur_block_id);
-      if res_block.is_err() {
-        return Err(res_block.err().unwrap());
-      }
-      let parent_block_id = res_block.unwrap().get_parent_id();
-      
-      if parent_block_id.is_none() {
-        let ident = match asgn.lval {
-          LVal{ref ident, ..} => ident,
-        };
-        return Err(Error::SemanticError(format!("{} is not defined", ident)));
-      }
-      
-      self.set_current_block(parent_block_id.unwrap());
-      
-      let res = self.asgn_check(blocks, scopes, asgn);
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
 
-      self.set_current_block(cur_block_id);
-      Ok(())
-    } else {
-      Ok(())
+    res = self.expr_check(blocks, scopes, &rval_.unwrap().get_btype(), &asgn.expr);
+    if res.is_err() {
+      return Err(res.err().unwrap());
     }
+
+    Ok(())
   }
 
   /// 变量或常量调用的检查。
@@ -150,86 +143,117 @@ impl Analyzer {
   pub fn lval_check(&mut self, blocks: &mut Blocks, scopes: &mut Scopes, lval: &LVal) -> Result<(), Error> {
     let cur_block_id = self.current_block_id;
     
-    let res_scope = scopes.get_scope(&cur_block_id);
+    let mut res_scope = scopes.get_scope(&cur_block_id);
     if res_scope.is_err() {
       return Err(res_scope.err().unwrap());
     }
 
-    let res_bool = res_scope.unwrap().lval_check(lval);
-    if res_bool.is_err() {
-      return Err(res_bool.err().unwrap());
+    let mut res_rval = res_scope.unwrap().lval_check(lval);
+    if res_rval.is_err() {
+      return Err(res_rval.err().unwrap());
     }
+    let mut rval_ = res_rval.unwrap();
+    
+    while rval_.is_none() {
+      let cur_block_id = self.current_block_id;  // shadow
 
-    if !res_bool.unwrap() {
       let res_block = blocks.get_block(&cur_block_id);
       if res_block.is_err() {
         return Err(res_block.err().unwrap());
       }
 
-      let parent_block_id = res_block.unwrap().get_parent_id();
-      
-      if parent_block_id.is_none() {
-        let ident = match lval {
-          LVal{ident, ..} => ident,
-        };
-        return Err(Error::SemanticError(format!("{} is not defined", ident)));
+      let parent_id_ = res_block.unwrap().get_parent_id();
+      if parent_id_.is_none() {
+        // 已经找遍所有父级 Block 了，该 LVal 不存在
+        return Err(Error::SemanticError(format!("{} is not defined", lval.ident)));
       }
+      let parent_id = parent_id_.unwrap();
       
-      self.set_current_block(parent_block_id.unwrap());
-      
-      let res = self.lval_check(blocks, scopes, lval);
-      if res.is_err() {
-        return Err(res.err().unwrap());
+      // 进入父级 Block
+      self.set_current_block(parent_id);
+
+      res_scope = scopes.get_scope(&parent_id);
+      if res_scope.is_err() {
+        return Err(res_scope.err().unwrap());
       }
 
-      self.set_current_block(cur_block_id);
-      Ok(())
-    } else {
-      Ok(())
+      res_rval = res_scope.unwrap().lval_check(lval);
+      if res_rval.is_err() {
+        return Err(res_rval.err().unwrap());
+      }
+      rval_ = res_rval.unwrap();
     }
+
+    // 恢复当前 Block Id
+    self.set_current_block(cur_block_id);
+
+    // 绑定 RVal
+    lval.bind_rval(rval_.unwrap());
+
+    Ok(())
   }
 
   /// 函数调用的检查，包括函数是否存在、参数是否符合函数定义。
   /// 由于目前 Base Type 只有 int(i32)，不需要检查对应参数是否类型匹配，
-  /// 仅需检查参数数量是否匹配。
+  /// 仅需检查参数数量是否匹配、表达式是否合法。
   pub fn func_call_check(&mut self, blocks: &mut Blocks, scopes: &mut Scopes, func_call: &FuncCall) -> Result<(), Error> {
     let cur_block_id = self.current_block_id;
     
-    let res_scope = scopes.get_scope(&cur_block_id);
+    let mut res_scope = scopes.get_scope(&cur_block_id);
     if res_scope.is_err() {
       return Err(res_scope.err().unwrap());
     }
 
-    let res_bool = res_scope.unwrap().func_call_check(func_call);
-    if res_bool.is_err() {
-      return Err(res_bool.err().unwrap());
+    let mut res_func_def = res_scope.unwrap().func_call_check(func_call);
+    if res_func_def.is_err() {
+      return Err(res_func_def.err().unwrap());
     }
+    let mut func_def_ = res_func_def.unwrap();
     
-    if !res_bool.unwrap() {
-      let cur_block_id = self.current_block_id;
+    while func_def_.is_none() {
+      let cur_block_id = self.current_block_id;  // shadow
 
       let res_block = blocks.get_block(&cur_block_id);
       if res_block.is_err() {
         return Err(res_block.err().unwrap());
       }
 
-      let parent_block_id = res_block.unwrap().get_parent_id();
-      if parent_block_id.is_none() {
+      let parent_id_ = res_block.unwrap().get_parent_id();
+      if parent_id_.is_none() {
+        // 已经找遍所有父级 Block 了，函数不存在
         return Err(Error::SemanticError(format!("{} is not defined", func_call.ident)));
       }
-      
-      self.set_current_block(parent_block_id.unwrap());
-      
-      let res = self.func_call_check(blocks, scopes, func_call);
+      let parent_id = parent_id_.unwrap();
+
+      // 进入父级 Block
+      self.set_current_block(parent_id);
+
+      res_scope = scopes.get_scope(&parent_id);
+      if res_scope.is_err() {
+        return Err(res_scope.err().unwrap());
+      }
+
+      res_func_def = res_scope.unwrap().func_call_check(func_call);
+      if res_func_def.is_err() {
+        return Err(res_func_def.err().unwrap());
+      }
+      func_def_ = res_func_def.unwrap();
+    }
+
+    // 恢复当前 Block Id
+    self.set_current_block(cur_block_id);
+
+    let len = func_def_.clone().unwrap().func_fparams.len();
+    for i in 0..len {
+      let expr = &func_call.func_rparams[i];
+      let btype = &func_def_.as_ref().unwrap().func_fparams[i].btype;
+      let res = self.expr_check(blocks, scopes, &btype, expr);
       if res.is_err() {
         return Err(res.err().unwrap());
       }
-      
-      self.set_current_block(cur_block_id);
-      Ok(())
-    } else {
-      Ok(())
     }
+
+    Ok(())
   }
 
   /// 检查 continue 是否有匹配的外层循环
@@ -257,27 +281,29 @@ impl Analyzer {
       return Err(res_block.err().unwrap());
     }
 
-    let mut parent_block_id = res_block.clone().unwrap().get_parent_id();
+    let mut parent_id_ = res_block.clone().unwrap().get_parent_id();
+    let mut block = res_block.unwrap().clone();
+    let mut func_def_ = block.func.clone().borrow().clone();
 
-    while parent_block_id.is_some() {
-      cur_block_id = parent_block_id.unwrap();
+    while func_def_.is_none() && parent_id_.is_some() {
+      cur_block_id = parent_id_.unwrap();
 
       res_block = blocks.get_block(&cur_block_id).cloned();
       if res_block.is_err() {
         return Err(res_block.err().unwrap());
       }
   
-      parent_block_id = res_block.clone().unwrap().get_parent_id();
-    }
+      parent_id_ = res_block.clone().unwrap().get_parent_id();
 
-    let block = res_block.unwrap().clone();
-    let func_def_ = block.func.borrow();
+      block = res_block.unwrap().clone();
+      func_def_ = block.func.clone().borrow().clone();
+    }
 
     if func_def_.is_none() {
       return Err(Error::SemanticError(format!("'return' can't be used outside a function")));
     }
 
-    match &func_def_.clone().unwrap().func_type {
+    match &func_def_.unwrap().func_type {
       FuncType::Void => {
         if expr_.is_some() {
           return Err(Error::SemanticError(format!("'return' should return void")));
@@ -288,7 +314,7 @@ impl Analyzer {
           return Err(Error::SemanticError(format!("'return' should return type {}", btype)));
         }
 
-        let res = self.expr_check_with_type(blocks, scopes, &btype, expr_.as_ref().unwrap());
+        let res = self.expr_check(blocks, scopes, &btype, expr_.as_ref().unwrap());
         if res.is_err() {
           return Err(res.err().unwrap());
         }
@@ -340,27 +366,35 @@ impl Analyzer {
         }
       },
       Stmt::Block( block ) => {
+        // 设置 Block 的 parent_id 为上一级 Block
+        block.set_parent_id(cur_block_id);
+
+        // 进入函数定义 Block
         self.set_current_block(block.get_id());
 
+        // 在 Blocks 表中添加当前 Block
         let mut res = blocks.add_block(block.clone());
         if res.is_err() {
           return Err(res.err().unwrap());
         }
-    
+
+        // 在 Scopes 表中添加当前 Block
         res = scopes.add_scope(self.current_block_id);
         if res.is_err() {
           return Err(res.err().unwrap());
         }
 
-        let res = self.block_check(blocks, scopes);
+        // 进行 Block 为单位的语义检查
+        let res = self.block_check(blocks, scopes, block.clone());
         if res.is_err() {
           return Err(res.err().unwrap());
         }
         
+        // 恢复当前 Block Id
         self.set_current_block(cur_block_id);
       },
       Stmt::While( while_ ) => {
-        let mut res = self.expr_check_with_type(blocks, scopes, &BType::Bool, &while_.cond);
+        let mut res = self.expr_check(blocks, scopes, &BType::Bool, &while_.cond);
         if res.is_err() {
           return Err(res.err().unwrap());
         }
@@ -376,12 +410,18 @@ impl Analyzer {
       },
       Stmt::Expr( expr_ ) => {
         if expr_.is_some() {
-          let res = self.expr_check_with_type(blocks, scopes, &BType::Int, expr_.as_ref().unwrap());  
+          let res = self.expr_check(blocks, scopes, &BType::Int, expr_.as_ref().unwrap());  
           if res.is_err() {
             return Err(res.err().unwrap());
           }
         }
-      }
+      },
+      Stmt::FuncDef( func_def ) => {
+        let res = self.func_def_check(blocks, scopes, func_def.clone());
+        if res.is_err() {
+          return Err(res.err().unwrap());
+        }
+      },
       _ => {}
     }
 
@@ -399,16 +439,10 @@ impl Analyzer {
   }
 
   /// 以 Block 为单位对当前的 Block 进行语义检查。
+  /// Blocks 和 Scopes 表中添加当前 Block、设置当前 Block 的 parent_id 的工作在调用该函数前完成。
   /// 同时检查当前 Block 每一个 else 是否有匹配的 if。
-  pub fn block_check(&mut self, blocks: &mut Blocks, scopes: &mut Scopes) -> Result<(), Error> {
-    let res_block = blocks.get_block(&self.current_block_id);
-    if res_block.is_err() {
-      return Err(res_block.err().unwrap());
-    }
-
-    let block = res_block.unwrap().clone();
+  pub fn block_check(&mut self, blocks: &mut Blocks, scopes: &mut Scopes, block: Rc<Block>) -> Result<(), Error> {    
     let stmts = &block.stmts;
-
     for stmt in stmts {
       let res = self.stmt_check(blocks, scopes, &stmt);
       if res.is_err() {
@@ -418,40 +452,58 @@ impl Analyzer {
     Ok(())
   }
 
-  /// 以 func 为单位进行语义检查。
+  /// 以 FuncDef 为单位进行语义检查。
   /// 认为函数的 Block 是没有父级 Block 的，
   /// 将传入的参数视为声明的变量，然后进行 Block 为单位的语义检查。
-  pub fn func_check(&mut self, blocks: &mut Blocks, scopes: &mut Scopes, func_def: Rc<FuncDef>) -> Result<(), Error> {
+  pub fn func_def_check(&mut self, blocks: &mut Blocks, scopes: &mut Scopes, func_def: Rc<FuncDef>) -> Result<(), Error> {
+    // 获取当前作用域
     let mut res_scope = scopes.get_scope(&self.current_block_id);
     if res_scope.is_err() {
       return Err(res_scope.err().unwrap());
     }
     let mut scope = res_scope.unwrap();
 
+    // 检查当前作用域能否定义该函数
     let mut res = scope.func_def(func_def.clone(), &self.current_block_id);
     if res.is_err() {
       return Err(res.err().unwrap());
     }
 
-    let cur_block_id = self.current_block_id;
-    self.set_current_block(func_def.block.block_id);
+    // 函数定义 Block
+    let block = func_def.block.clone();
 
-    res = blocks.add_block(func_def.block.clone());
+    // 设置 Block 属于这个 FuncDef
+    block.set_func(func_def.clone());
+
+    // 设置函数的父级 Block 为全局 Block，使其能访问全局变量和全局常量
+    block.set_parent_id(self.get_global_block());
+
+    // 保存当前 Block Id，以便在函数定义 Block 的检查结束后恢复
+    let cur_block_id = self.current_block_id;
+
+    // 进入函数定义 Block
+    self.set_current_block(block.block_id);
+  
+    // 在 Blocks 表中添加当前 Block
+    res = blocks.add_block(block.clone());
     if res.is_err() {
       return Err(res.err().unwrap());
     }
 
+    // 在 Scopes 表中添加当前 Block
     res = scopes.add_scope(self.current_block_id);
     if res.is_err() {
       return Err(res.err().unwrap());
     }
     
+    // 获取当前 Block 作用域
     res_scope = scopes.get_scope(&self.current_block_id);
     if res_scope.is_err() {
       return Err(res_scope.err().unwrap());
     }
     scope = res_scope.unwrap();
 
+    // 函数参数视为声明的变量，进行声明检查
     for param in &func_def.func_fparams {
       let FuncFParam{btype, ident} = param;
       res = scope.decl(btype, ident, false, &self.current_block_id);  /* 函数没有父级 Block，无需检查上层 */
@@ -459,12 +511,14 @@ impl Analyzer {
         return Err(res.err().unwrap());
       }
     }
-  
-    res = self.block_check(blocks, scopes);
+
+    // 进行 Block 为单位的语义检查
+    res = self.block_check(blocks, scopes, block.clone());
     if res.is_err() {
       return Err(res.err().unwrap());
     }
     
+    // 恢复当前 Block Id
     self.set_current_block(cur_block_id);
     Ok(())
   }
@@ -472,36 +526,29 @@ impl Analyzer {
   /// 以 comp_unit 为单位进行语义检查
   /// 检查无误后返回 Blocks 和 Scopes 供解释器读取
   pub fn check(&mut self, comp_unit: &CompUnit) -> Result<(Blocks, Scopes), Error> {
-    self.set_current_block(comp_unit.block.block_id);
-
     let mut blocks = Blocks::new();
     let mut scopes = Scopes::new();
+    let block = comp_unit.block.clone();
+    let block_id = block.block_id;
 
-    // 全局变量常量的作用域视为一个 Block，这个 Block 没有父级 Block，Id 为 0
-    let mut res = blocks.add_block(comp_unit.block.clone());
+    self.set_global_block(block_id);
+    self.set_current_block(block_id);
+    // 全局变量常量的作用域视为一个 Block，这个 Block 没有父级 Block，不设置其 parent_id
+    
+    // 在 Blocks 表中添加当前 Block
+    let mut res = blocks.add_block(block.clone());
     if res.is_err() {
       return Err(res.err().unwrap());
     }
-    res = scopes.add_scope(self.current_block_id);
+
+    // 在 Scopes 表中添加当前 Block
+    res = scopes.add_scope(block_id);
     if res.is_err() {
       return Err(res.err().unwrap());
     }
 
-    let defs_ = &comp_unit.defs;
-    if defs_.is_some() {
-      for def in defs_.as_ref().unwrap() {
-        res = match def {
-          Def::ConstDecl( const_decl ) => self.const_decl_check(&mut scopes, const_decl),
-          Def::VarDecl( var_decl ) => self.var_decl_check(&mut scopes, var_decl),
-          Def::FuncDef( func_def ) => self.func_check(&mut blocks, &mut scopes, func_def.clone()),
-        };
-        if res.is_err() {
-          return Err(res.err().unwrap());
-        }
-      }
-    }
-
-    res = self.block_check(&mut blocks, &mut scopes);
+    // 进行 Block 为单位的语义检查
+    let res = self.block_check(&mut blocks, &mut scopes, block.clone());
     if res.is_err() {
       return Err(res.err().unwrap());
     }
