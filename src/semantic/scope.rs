@@ -117,11 +117,6 @@ impl BlockScope {
   /// 若存在该函数的符号，绑定 FuncDef 给 FuncCall，返回相应的 Symbol 中的 Rc<FuncDef>。
   /// 由于目前 Base Type 只有 int(i32)，检查调用参数是否匹配仅需检查参数数量是否匹配。
   pub fn func_call_check(&self, func_call: &FuncCall) -> Result<Option<Rc<FuncDef>>, Error> {
-
-    for i in self.symbol_table.iter() {
-      println!("{}", i.0);
-    }
-
     let (ident, func_rparams) = match func_call {
       FuncCall{ident, func_rparams, ..} => (ident, func_rparams),
     };

@@ -1,11 +1,11 @@
 use crate::{ast::expr::{AddExpr, AddOp, EqExpr, Expr, LAndExpr, MulExpr, MulOp, PrimaryExpr, RelExpr, RelOp, UnaryExpr, UnaryOp}, error::Error};
 
-use super::Interpreter;
+use super::{ctr::RetVal, Interpreter};
 
 // 假定语义检查已经排除了所有潜在问题，这里直接运算。
 
 impl Interpreter {
-/// 计算一元表达式的值
+  /// 计算一元表达式的值
   pub fn calc_unary_expr(&mut self, unary_expr: &UnaryExpr) -> Result<i32, Error> {
     let mut unit: i32 = match &unary_expr.primary_exp {
       PrimaryExpr::Expr(expr_) => {
@@ -16,11 +16,14 @@ impl Interpreter {
         res.unwrap()
       },
       PrimaryExpr::FuncCall(func_call) => {
-        let res = self.call_int_func(func_call);
+        let res = self.call_func(func_call);
         if res.is_err() {
           return Err(res.err().unwrap());
         };
-        res.unwrap()
+        match res.unwrap() {
+          RetVal::Int(v) => v,
+          _ => return Err(Error::RuntimeError("function didn't return int".to_string())),
+        }
       },
       PrimaryExpr::LVal(lval) => {
         lval.get_int()

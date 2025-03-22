@@ -1,7 +1,7 @@
 use std::env::args;
 use std::fs::read_to_string;
 use std::io::Result;
-use yam::{SyntacticAnalyzer, SemanticAnalyzer};
+use yam::{SyntacticAnalyzer, SemanticAnalyzer, Interpreter};
 use std::fs::File;
 use std::io::Write;
 
@@ -45,10 +45,16 @@ fn main() -> Result<()> {
   println!("Semantic check successflly");
 
   // 解释执行
-  let interpreter = {
+  let mut interpreter = {
     let (blocks, scopes) = res.unwrap();
-    yam::Interpreter::new(blocks, scopes)
+    Interpreter::new(blocks, scopes)
   };
+  let res = interpreter.interpret(comp_unit);
+  if res.is_err() {
+    println!("{}", res.err().unwrap());
+    return Ok(());
+  }
+  println!("Interpret successflly");
 
   Ok(())
 }
