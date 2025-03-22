@@ -5,11 +5,10 @@ pub mod expr_check;
 
 use std::rc::Rc;
 use blocks::Blocks;
-use expr_check::{bool_expr_check, expr_check, int_expr_check};
 use scope::Scopes;
 
 use crate::ast::block::{Block, BlockId};
-use crate::ast::btype::{BType, LVal};
+use crate::ast::btype::LVal;
 use crate::ast::expr::LOrExpr;
 use crate::ast::func::{FuncCall, FuncDef, FuncType, FuncFParam};
 use crate::ast::stmt::{Asgn, ConstDecl, ConstDef, Stmt, VarDecl, VarDef};
@@ -62,23 +61,6 @@ impl Analyzer {
     self.current_loop -= 1;
   }
 
-  /// 检查表达式是否合法及其返回类型是否匹配。
-  pub fn expr_check(&mut self, blocks: &mut Blocks, scopes: &mut Scopes, btype: &BType, lor_expr: &LOrExpr) -> Result<(), Error> {
-    match btype {
-      BType::Int => {
-        int_expr_check(self, blocks, scopes, lor_expr)
-      },
-      BType::Bool => {
-        bool_expr_check(self, blocks, scopes, lor_expr)
-      }
-    }
-  }
-
-  /// 检查表达式是否合法及其返回类型是否匹配。
-  pub fn expr_nontype_check(&mut self, blocks: &mut Blocks, scopes: &mut Scopes, lor_expr: &LOrExpr) -> Result<(), Error> {
-    expr_check(self, blocks, scopes, lor_expr)
-  }
-
   /// 常量声明的检查
   pub fn const_decl_check(&mut self, scopes: &mut Scopes, const_decl: &ConstDecl) -> Result<(), Error> {
     for const_def in &const_decl.const_defs {
@@ -94,11 +76,10 @@ impl Analyzer {
         return Err(res.err().unwrap());
       }
 
-      res = self.expr_check(&mut Blocks::new(), scopes, &const_decl.btype, expr);
+      res = self.expr_check(&mut Blocks::new(), scopes, expr);
       if res.is_err() {
         return Err(res.err().unwrap());
       }
-
     }
     Ok(())
   }
@@ -119,7 +100,7 @@ impl Analyzer {
       }
 
       if expr_.is_some() {
-        res = self.expr_check(&mut Blocks::new(), scopes, &var_decl.btype, expr_.as_ref().unwrap());
+        res = self.expr_check(&mut Blocks::new(), scopes, expr_.as_ref().unwrap());
         if res.is_err() {
           return Err(res.err().unwrap());
         }
@@ -143,7 +124,7 @@ impl Analyzer {
       return Err(Error::InternalError(format!("{} was declared but RVal of {} was not bound", lval.ident, lval.ident)));
     }
 
-    res = self.expr_check(blocks, scopes, &rval_.unwrap().get_btype(), &asgn.expr);
+    res = self.expr_check(blocks, scopes, &asgn.expr);
     if res.is_err() {
       return Err(res.err().unwrap());
     }
@@ -259,8 +240,7 @@ impl Analyzer {
     let len = func_def_.clone().unwrap().func_fparams.len();
     for i in 0..len {
       let expr = &func_call.func_rparams[i];
-      let btype = &func_def_.as_ref().unwrap().func_fparams[i].get_btype();
-      let res = self.expr_check(blocks, scopes, &btype, expr);
+      let res = self.expr_check(blocks, scopes, expr);
       if res.is_err() {
         return Err(res.err().unwrap());
       }
@@ -327,7 +307,7 @@ impl Analyzer {
           return Err(Error::SemanticError(format!("'return' should return type {}", btype)));
         }
 
-        let res = self.expr_check(blocks, scopes, &btype, expr_.as_ref().unwrap());
+        let res = self.expr_check(blocks, scopes, expr_.as_ref().unwrap());
         if res.is_err() {
           return Err(res.err().unwrap());
         }
@@ -407,7 +387,7 @@ impl Analyzer {
         self.set_current_block(cur_block_id);
       },
       Stmt::While( while_ ) => {
-        let mut res = self.expr_check(blocks, scopes, &BType::Bool, &while_.cond);
+        let mut res = self.expr_check(blocks, scopes, &while_.cond);
         if res.is_err() {
           return Err(res.err().unwrap());
         }
@@ -423,7 +403,7 @@ impl Analyzer {
       },
       Stmt::Expr( expr_ ) => {
         if expr_.is_some() {
-          let res = self.expr_check(blocks, scopes, &BType::Int, expr_.as_ref().unwrap());  
+          let res = self.expr_check(blocks, scopes, expr_.as_ref().unwrap());  
           if res.is_err() {
             return Err(res.err().unwrap());
           }
