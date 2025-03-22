@@ -42,11 +42,11 @@ impl BlockScope {
 
   /// 声明一个常量或变量。
   /// 作用域检查仅限于本 Block，故可以遮蔽上层 Block 的同名常量。
-  pub fn decl(&mut self, btype: &BType, ident: &String, const_: bool, block_id: &BlockId) -> Result<(), Error> {
+  pub fn decl(&mut self, btype: &BType, ident: &String, const_: bool, block_id: &BlockId, rval: Rc<RVal>) -> Result<(), Error> {
     if self.symbol_table.get(ident).is_none() {
       self.symbol_table.insert(
         ident.clone(),
-        Symbol::new_val(btype, const_, *block_id)
+        Symbol::new_val(btype, const_, *block_id, rval)
       );
       Ok(())
     } else {

@@ -63,7 +63,9 @@ impl Analyzer {
 
   /// 常量声明的检查
   pub fn const_decl_check(&mut self, scopes: &mut Scopes, const_decl: &ConstDecl) -> Result<(), Error> {
-    for const_def in &const_decl.const_defs {
+    let len = const_decl.const_defs.len();
+    for i in 0..len {
+      let const_def = &const_decl.const_defs[i];
       let ConstDef{ident, expr} = const_def;
 
       let res_scope = scopes.get_scope(&self.current_block_id);
@@ -71,7 +73,8 @@ impl Analyzer {
         return Err(res_scope.err().unwrap());
       }
 
-      let mut res = res_scope.unwrap().decl(&const_decl.btype, ident, true, &self.current_block_id);
+      let rval = const_decl.rvals[i].clone();
+      let mut res = res_scope.unwrap().decl(&const_decl.btype, ident, true, &self.current_block_id, rval);
       if res.is_err() {
         return Err(res.err().unwrap());
       }
@@ -86,7 +89,9 @@ impl Analyzer {
 
   /// 变量声明的检查
   pub fn var_decl_check(&mut self, scopes: &mut Scopes, var_decl: &VarDecl) -> Result<(), Error> {
-    for var_def in &var_decl.var_defs {
+    let len = var_decl.var_defs.len();
+    for i in 0..len {
+      let var_def = &var_decl.var_defs[i];
       let VarDef{ident, expr_} = var_def;
 
       let res_scope = scopes.get_scope(&self.current_block_id);
@@ -94,7 +99,8 @@ impl Analyzer {
         return Err(res_scope.err().unwrap());
       }
 
-      let mut res = res_scope.unwrap().decl(&var_decl.btype, ident, false, &self.current_block_id);
+      let rval = var_decl.rvals[i].clone();
+      let mut res = res_scope.unwrap().decl(&var_decl.btype, ident, false, &self.current_block_id, rval.clone());
       if res.is_err() {
         return Err(res.err().unwrap());
       }
@@ -498,8 +504,8 @@ impl Analyzer {
 
     // 函数参数视为声明的变量，进行声明检查
     for param in &func_def.func_fparams {
-      let FuncFParam{ident, ..} = param;
-      res = scope.decl(&param.get_btype(), ident, false, &self.current_block_id);  /* 函数没有父级 Block，无需检查上层 */
+      let FuncFParam{ident, rval} = param;
+      res = scope.decl(&param.get_btype(), ident, false, &self.current_block_id, rval.clone());  /* 函数没有父级 Block，无需检查上层 */
       if res.is_err() {
         return Err(res.err().unwrap());
       }

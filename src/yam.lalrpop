@@ -198,7 +198,7 @@ ConstDef: ConstDef = {
 }
 
 ConstDecl: ConstDecl = {
-  "const" <btype: BType> <const_defs: VecComma<ConstDef>> ";" => ConstDecl { <> }
+  "const" <btype: BType> <const_defs: VecComma<ConstDef>> ";" => ConstDecl::new(btype, const_defs),
 }
 
 VarDef: VarDef = {
@@ -213,7 +213,7 @@ VarDef: VarDef = {
 }
 
 VarDecl: VarDecl = {
-  <btype: BType> <var_defs: VecComma<VarDef>> ";" => VarDecl { <> }
+  <btype: BType> <var_defs: VecComma<VarDef>> ";" => VarDecl::new(btype, var_defs),
 }
 
 Asgn: Asgn = {

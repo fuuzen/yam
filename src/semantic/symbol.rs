@@ -62,13 +62,13 @@ impl Symbol {
   }
 
   /// 从 Base Type 新建一个常量或变量
-  pub fn new_val(btype: &BType, const_: bool, block_id: BlockId) -> Self {
+  pub fn new_val(btype: &BType, const_: bool, block_id: BlockId, rval: Rc<RVal>) -> Self {
     Self {
       const_,
       btype: Some(btype.clone()),
       func_def: None,
       block_id,
-      rval: Some(Rc::new(RVal::new_int())),  // 暂时只有 int 类型
+      rval: Some(rval),
     }
   }
 }
