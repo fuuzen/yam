@@ -296,13 +296,25 @@ FuncFParam: FuncFParam = {
 }
 
 FuncDef: Rc<FuncDef> = {
-  <btype: BType> <ident: Ident> "(" <func_fparams: VecComma<FuncFParam>> ")" <block: Block> => Rc::new(FuncDef{
+  <btype: BType> <ident: Ident> "(" ")" <block: Block> => Rc::new( FuncDef {
+    func_type: FuncType::BType( btype ),
+    ident,
+    func_fparams: vec![],
+    block,
+  }),
+  "void" <ident: Ident> "(" ")" <block: Block> => Rc::new( FuncDef {
+    func_type: FuncType::Void,
+    ident,
+    func_fparams: vec![],
+    block,
+  }),
+  <btype: BType> <ident: Ident> "(" <func_fparams: VecComma<FuncFParam>> ")" <block: Block> => Rc::new( FuncDef {
     func_type: FuncType::BType( btype ),
     ident,
     func_fparams,
     block,
   }),
-  "void" <ident: Ident> "(" <func_fparams: VecComma<FuncFParam>> ")" <block: Block> => Rc::new(FuncDef {
+  "void" <ident: Ident> "(" <func_fparams: VecComma<FuncFParam>> ")" <block: Block> => Rc::new( FuncDef {
     func_type: FuncType::Void,
     ident,
     func_fparams,

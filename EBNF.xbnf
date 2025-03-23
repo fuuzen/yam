@@ -33,7 +33,6 @@ VarDefs     ::= VarDef {"," VarDef};
 VarDecl     ::= BType VarDef {"," VarDef} ";";
 Decl        ::= ConstDecl | VarDecl;                  /* 声明语句 */
 Asgn        ::= LVal "=" Expr ";";                    /* 赋值语句 */
-While       ::= "while" "(" Expr ")" Stmt;            /* while 语句 */
 Break       ::= "break" ";";                          /* break */
 Continue    ::= "continue" ";";                       /* continue */
 Return      ::= "return" [Expr] ";";                  /* return */
@@ -41,8 +40,10 @@ Return      ::= "return" [Expr] ";";                  /* return */
 Stmt        ::= MatchedStmt | OpenStmt;
 OpenStmt    ::= "if" "(" Expr ")" Stmt
               | "if" "(" Expr ")" MatchedStmt "else" OpenStmt
+              | "while" "(" Expr ")" OpenStmt
               ;
 MatchedStmt ::= "if" "(" Expr ")" MatchedStmt "else" MatchedStmt
+              | "while" "(" Expr ")" MatchedStmt
               | Block
               | Decl
               | Asgn
@@ -55,4 +56,4 @@ MatchedStmt ::= "if" "(" Expr ")" MatchedStmt "else" MatchedStmt
 
 Block       ::= "{" {Stmt} "}";
 
-CompUnit    ::= {Decl | FuncDef} "main" IDENT Block;
+CompUnit    ::= {Decl | FuncDef};

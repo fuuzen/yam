@@ -54,7 +54,7 @@ fn main() -> Result<()> {
     println!("{}", res.err().unwrap());
     return Ok(());
   }
-  println!("Interpret successflly");
+  println!("Interpret successflly, main return value: {:?}", res.unwrap());
 
   Ok(())
 }

@@ -66,7 +66,7 @@ impl Interpreter {
     }
     
     self.set_current_block(func_def.block.block_id);
-    let res = self.intpret_block(func_def.block.clone());
+    let res = self.interpret_block(func_def.block.clone());
     if res.is_err() {
       return Err(res.err().unwrap());
     }
@@ -77,7 +77,7 @@ impl Interpreter {
     }
   }
 
-  pub fn intpret_const_decl(&mut self, const_decl: &ConstDecl) -> Result<Ctr, Error> {
+  pub fn interpret_const_decl(&mut self, const_decl: &ConstDecl) -> Result<Ctr, Error> {
     let len = const_decl.const_defs.len();
     for i in 0..len {
       let const_def = &const_decl.const_defs[i];
@@ -112,7 +112,7 @@ impl Interpreter {
     Ok(Ctr::None)
   }
 
-  pub fn intpret_asgn(&mut self, asgn: &Asgn) -> Result<Ctr, Error> {
+  pub fn interpret_asgn(&mut self, asgn: &Asgn) -> Result<Ctr, Error> {
     let res = self.calc_expr(&asgn.expr);
     if res.is_err() {
       return Err(res.err().unwrap());
@@ -122,18 +122,29 @@ impl Interpreter {
     Ok(Ctr::None)
   }
 
-  pub fn intpret_ifelse(&self, ifelse: &IfElse) -> Result<Ctr, Error> {
-    Ok(Ctr::None)
-  }
-
-  pub fn intpret_while(&mut self, while_: &While) -> Result<Ctr, Error> {
-    let res = self.calc_expr(&while_.cond);
+  pub fn interpret_ifelse(&mut self, ifelse: &IfElse) -> Result<Ctr, Error> {
+    let res = self.calc_expr(&ifelse.cond);
     if res.is_err() {
       return Err(res.err().unwrap());
     }
 
-    while res.clone().unwrap() != 0 {
-      let res = self.intpret_stmt(&while_.body);
+    match res.clone().unwrap() {
+      0 => match &ifelse.else_ {
+        Some( else_ ) => self.interpret_stmt(else_),
+        None => Ok(Ctr::None),
+      },
+      _ => self.interpret_stmt(&ifelse.if_),
+    }
+  }
+
+  pub fn interpret_while(&mut self, while_: &While) -> Result<Ctr, Error> {
+    let mut res_cond = self.calc_expr(&while_.cond);
+    if res_cond.is_err() {
+      return Err(res_cond.err().unwrap());
+    }
+
+    while res_cond.clone().unwrap() != 0 {
+      let res = self.interpret_stmt(&while_.body);
       if res.is_err() {
         return Err(res.err().unwrap());
       }
@@ -144,15 +155,15 @@ impl Interpreter {
         _ => (),
       }
 
-      let res = self.calc_expr(&while_.cond);
-      if res.is_err() {
+      res_cond = self.calc_expr(&while_.cond);
+      if res_cond.is_err() {
         return Err(res.err().unwrap());
       }
     }
     Ok(Ctr::None)
   }
 
-  pub fn intpret_return(&mut self, expr_: &Option<Expr>) -> Result<Ctr, Error> {
+  pub fn interpret_return(&mut self, expr_: &Option<Expr>) -> Result<Ctr, Error> {
     if expr_.is_some() {
       let res = self.calc_expr(expr_.as_ref().unwrap());
       if res.is_err() {
@@ -164,7 +175,7 @@ impl Interpreter {
     }
   }
 
-  pub fn intpret_stmt(&mut self, stmt: &Stmt) -> Result<Ctr, Error> {
+  pub fn interpret_stmt(&mut self, stmt: &Stmt) -> Result<Ctr, Error> {
     match stmt {
       Stmt::Expr( expr_ ) => {
         if expr_.is_some() {
@@ -175,22 +186,22 @@ impl Interpreter {
         }
         Ok(Ctr::None)
       },
-      Stmt::ConstDecl( const_decl ) => self.intpret_const_decl(const_decl),
+      Stmt::ConstDecl( const_decl ) => self.interpret_const_decl(const_decl),
       Stmt::VarDecl( var_decl ) => self.interpret_var_decl(var_decl),
-      Stmt::Asgn( asgn ) => self.intpret_asgn(asgn),
-      Stmt::Block( block ) => self.intpret_block(block.clone()),
-      Stmt::IfElse( if_ ) => self.intpret_ifelse(if_),
-      Stmt::While( while_ ) => self.intpret_while(while_),
+      Stmt::Asgn( asgn ) => self.interpret_asgn(asgn),
+      Stmt::Block( block ) => self.interpret_block(block.clone()),
+      Stmt::IfElse( if_ ) => self.interpret_ifelse(if_),
+      Stmt::While( while_ ) => self.interpret_while(while_),
       Stmt::Break => Ok(Ctr::Break),
       Stmt::Continue => Ok(Ctr::Continue),
-      Stmt::Return( expr_ ) => self.intpret_return(expr_),
+      Stmt::Return( expr_ ) => self.interpret_return(expr_),
       _ => Ok(Ctr::None),
     }
   }
 
-  pub fn intpret_block(&mut self, block: Rc<Block>) -> Result<Ctr, Error> {
+  pub fn interpret_block(&mut self, block: Rc<Block>) -> Result<Ctr, Error> {
     for stmt in &block.stmts {
-      let res = self.intpret_stmt(stmt);
+      let res = self.interpret_stmt(stmt);
       if res.is_err() {
         return Err(res.err().unwrap());
       }
@@ -204,11 +215,47 @@ impl Interpreter {
     Ok(Ctr::None)
   }
 
-  pub fn interpret(&mut self, comp_unit: &CompUnit) -> Result<(), Error> {
-    let res = self.intpret_block(comp_unit.block.clone());
+  pub fn interpret(&mut self, comp_unit: &CompUnit) -> Result<RetVal, Error> {
+    let mut block_: Option<Rc<Block>> = None;
+    for stmt in &comp_unit.block.stmts {
+      match stmt {
+        Stmt::FuncDef( func_def ) => {
+          let func_name = func_def.ident.clone();
+          if func_name == "main" {
+            block_ = Some(func_def.block.clone());
+            break;
+          }
+        },
+        Stmt::VarDecl( var_decl ) => {
+          let res = self.interpret_var_decl(var_decl);
+          if res.is_err() {
+            return Err(res.err().unwrap());
+          }
+        },
+        Stmt::ConstDecl( const_decl ) => {
+          let res = self.interpret_const_decl(const_decl);
+          if res.is_err() {
+            return Err(res.err().unwrap());
+          }
+        },
+        _ => (),
+      }
+    }
+
+    if block_.is_none() {
+      return Err(Error::RuntimeError("main function not found".to_string()));
+    }
+    let block = block_.clone().unwrap();
+
+    self.set_current_block(block.block_id);
+    let res = self.interpret_block(block);
     if res.is_err() {
       return Err(res.err().unwrap());
     }
-    Ok(())
+
+    match res.clone().unwrap() {
+      Ctr::Return( v ) => Ok(v),
+      _ => Ok(RetVal::Void),
+    }
   }
 }
