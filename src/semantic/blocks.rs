@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc};
+use std::rc::Rc;
 
 use crate::{ast::block::{Block, BlockId}, error::Error};
 
@@ -23,13 +23,8 @@ impl Analyzer {
   }
 
   /// 获取给定 BlockId 的 Rc<Block>
-  pub fn get_block(&self, block_id: &BlockId) -> Result<&Rc<Block>, Error> {
+  pub fn get_block_by_id(&self, block_id: &BlockId) -> Result<&Rc<Block>, Error> {
     let err: String = format!("can't find current block");
     self.block_table.get(block_id).ok_or(Error::InternalError(err))
-  }
-
-  /// 获取整个 block_table，用于交给解释器执行
-  pub fn get_block_table(&self) -> &HashMap<BlockId, Rc<Block>> {
-    &self.block_table
   }
 }

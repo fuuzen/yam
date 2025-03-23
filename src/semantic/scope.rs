@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -11,21 +12,22 @@ use super::Analyzer;
 
 #[derive(Clone)]
 pub struct BlockScope {
-  symbol_table: HashMap<String, Symbol>,
+  symbol_table: Rc<RefCell<HashMap<String, Symbol>>>,
 }
 
 impl BlockScope {
   pub fn new() -> Self {
     Self {
-      symbol_table: HashMap::new(),
+      symbol_table: Rc::new(RefCell::new(HashMap::new())),
     }
   }
 
   /// 声明一个常量或变量。
   /// 作用域检查仅限于本 Block，故可以遮蔽上层 Block 的同名常量。
-  pub fn decl(&mut self, btype: &BType, ident: &String, const_: bool, rval: Rc<RVal>) -> Result<(), Error> {
-    if self.symbol_table.get(ident).is_none() {
-      self.symbol_table.insert(
+  pub fn decl(&self, btype: &BType, ident: &String, const_: bool, rval: Rc<RVal>) -> Result<(), Error> {
+    let mut t = self.symbol_table.borrow_mut();
+    if t.get(ident).is_none() {
+      t.insert(
         ident.clone(),
         Symbol::new_val(btype, const_, rval)
       );
@@ -37,9 +39,10 @@ impl BlockScope {
 
   /// 声明并定义一个函数。
   /// 作用域检查仅限于本 Block，故可以遮蔽上层 Block 的同名函数
-  pub fn func_def(&mut self, func_def: Rc<FuncDef>) -> Result<(), Error> {
-    if self.symbol_table.get(&func_def.ident).is_none() {
-      self.symbol_table.insert(
+  pub fn func_def(&self, func_def: Rc<FuncDef>) -> Result<(), Error> {
+    let mut t = self.symbol_table.borrow_mut();
+    if t.get(&func_def.ident).is_none() {
+      t.insert(
         func_def.ident.clone(),
         Symbol::new_func(func_def)
       );
@@ -57,7 +60,8 @@ impl BlockScope {
     let ident = match lval {
       LVal {ident, ..} => ident
     };
-    let symbol_ = self.symbol_table.get(ident);
+    let t = self.symbol_table.borrow();
+    let symbol_ = t.get(ident);
     if symbol_.is_some() {
       if symbol_.unwrap().func_def.is_some() {
         Err(Error::SemanticError(format!("cannot assign to function {}", symbol_.unwrap().func_def.as_ref().unwrap().ident)))
@@ -82,7 +86,8 @@ impl BlockScope {
       LVal {ident, ..} => ident,
     };
     let k = ident.clone();
-    let symbol_ = self.symbol_table.get(&k);
+    let t = self.symbol_table.borrow();
+    let symbol_ = t.get(&k);
     if symbol_.is_none() {
       Ok(None)
     } else if symbol_.unwrap().func_def.is_some() {
@@ -102,7 +107,8 @@ impl BlockScope {
       FuncCall{ident, func_rparams, ..} => (ident, func_rparams),
     };
     let k = ident.clone();
-    let symbol_ = self.symbol_table.get(&k);
+    let t = self.symbol_table.borrow();
+    let symbol_ = t.get(&k);
     if symbol_.is_none() {
       Ok(None)
     } else if symbol_.unwrap().func_def.as_ref().unwrap().func_fparams.len() != func_rparams.len() {
@@ -112,18 +118,13 @@ impl BlockScope {
       Ok(Some(symbol_.unwrap().func_def.clone().unwrap()))
     }
   }
-
-  /// 尝试根据 identity 获取一个符号的 Option
-  pub fn get_symbol(&self, ident: &String) -> Option<&Symbol> {
-    self.symbol_table.get(ident)
-  }
 }
 
 
 impl Analyzer {
   /// 在哈希表中创建一个给定 BlockId 的新的 BlockScope
   pub fn add_scope(&mut self, block_id: BlockId) -> Result<(), Error> {
-    let res = self.scope_table.insert(block_id, BlockScope::new());
+    let res = self.scope_table.insert(block_id, Rc::new(BlockScope::new()));
     if res.is_some() {
       return Err(Error::InternalError(format!("block id conflict: {}", block_id)));
     }
@@ -131,12 +132,12 @@ impl Analyzer {
   }
 
   /// 获取给定 BlockId 的父级 scope
-  pub fn get_parent_scope(&self, block_id: &BlockId) -> Result<& BlockScope, Error> {
-    self.scope_table.get(block_id).ok_or(Error::InternalError(format!("can't find parent block for this block {}", block_id)))
+  pub fn get_parent_scope(&self, block_id: &BlockId) -> Result<Rc<BlockScope>, Error> {
+    self.scope_table.get(block_id).ok_or(Error::InternalError(format!("can't find parent block for this block {}", block_id))).cloned()
   }
 
   /// 获取给定 BlockId 的 &mut BlockScope
-  pub fn get_scope(&mut self, block_id: &BlockId) -> Result<&mut BlockScope, Error> {
-    self.scope_table.get_mut(block_id).ok_or(Error::InternalError(format!("can't find the scope of this block: {}", block_id)))
+  pub fn get_scope_by_id(&mut self, block_id: &BlockId) -> Result<Rc<BlockScope>, Error> {
+    self.scope_table.get_mut(block_id).ok_or(Error::InternalError(format!("can't find the scope of this block: {}", block_id))).cloned()
   }
 }
