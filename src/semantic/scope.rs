@@ -7,6 +7,7 @@ use crate::ast::func::{FuncCall, FuncDef};
 use crate::error::Error;
 
 use super::symbol::Symbol;
+use super::Analyzer;
 
 #[derive(Clone)]
 pub struct BlockScope {
@@ -22,11 +23,11 @@ impl BlockScope {
 
   /// 声明一个常量或变量。
   /// 作用域检查仅限于本 Block，故可以遮蔽上层 Block 的同名常量。
-  pub fn decl(&mut self, btype: &BType, ident: &String, const_: bool, block_id: &BlockId, rval: Rc<RVal>) -> Result<(), Error> {
+  pub fn decl(&mut self, btype: &BType, ident: &String, const_: bool, rval: Rc<RVal>) -> Result<(), Error> {
     if self.symbol_table.get(ident).is_none() {
       self.symbol_table.insert(
         ident.clone(),
-        Symbol::new_val(btype, const_, *block_id, rval)
+        Symbol::new_val(btype, const_, rval)
       );
       Ok(())
     } else {
@@ -36,11 +37,11 @@ impl BlockScope {
 
   /// 声明并定义一个函数。
   /// 作用域检查仅限于本 Block，故可以遮蔽上层 Block 的同名函数
-  pub fn func_def(&mut self, func_def: Rc<FuncDef>, block_id: &BlockId) -> Result<(), Error> {
+  pub fn func_def(&mut self, func_def: Rc<FuncDef>) -> Result<(), Error> {
     if self.symbol_table.get(&func_def.ident).is_none() {
       self.symbol_table.insert(
         func_def.ident.clone(),
-        Symbol::new_func(func_def, *block_id)
+        Symbol::new_func(func_def)
       );
       Ok(())
     } else {
@@ -118,18 +119,8 @@ impl BlockScope {
   }
 }
 
-pub struct Scopes {
-  /// 所有的 scope，用哈希表存储
-  scope_table: HashMap<BlockId, BlockScope>,
-}
 
-impl Scopes {
-  pub fn new() -> Self {
-    Self {
-      scope_table: HashMap::new(),
-    }
-  }
-
+impl Analyzer {
   /// 在哈希表中创建一个给定 BlockId 的新的 BlockScope
   pub fn add_scope(&mut self, block_id: BlockId) -> Result<(), Error> {
     let res = self.scope_table.insert(block_id, BlockScope::new());
@@ -147,10 +138,5 @@ impl Scopes {
   /// 获取给定 BlockId 的 &mut BlockScope
   pub fn get_scope(&mut self, block_id: &BlockId) -> Result<&mut BlockScope, Error> {
     self.scope_table.get_mut(block_id).ok_or(Error::InternalError(format!("can't find the scope of this block: {}", block_id)))
-  }
-
-  /// 获取整个 scope_table，用于交给解释器执行
-  pub fn get_scope_table(&self) -> &HashMap<BlockId, BlockScope> {
-    &self.scope_table
   }
 }

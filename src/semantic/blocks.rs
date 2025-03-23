@@ -2,20 +2,10 @@ use std::{collections::HashMap, rc::Rc};
 
 use crate::{ast::block::{Block, BlockId}, error::Error};
 
+use super::Analyzer;
 
-pub struct Blocks {
-  /// BlockId 到具体 Block 到哈希表，用于快速定位回指定 Block。
-  /// 这里的 Rc<Block> 指向的 Block 在 parse 阶段创建。
-  block_table: HashMap<BlockId, Rc<Block>>,
-}
 
-impl Blocks {
-  pub fn new() -> Self {
-    Self {
-      block_table: HashMap::new(),
-    }
-  }
-
+impl Analyzer {
   /// 将 block 记录在其 id 为索引的哈希表中
   pub fn add_block(&mut self, block: Rc<Block>) -> Result<(), Error> {
     let k = block.get_id();

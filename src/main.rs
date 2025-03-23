@@ -45,10 +45,7 @@ fn main() -> Result<()> {
   println!("Semantic check successflly");
 
   // 解释执行
-  let mut interpreter = {
-    let (blocks, scopes) = res.unwrap();
-    Interpreter::new(blocks, scopes)
-  };
+  let mut interpreter = Interpreter::new();
   let res = interpreter.interpret(comp_unit);
   if res.is_err() {
     println!("{}", res.err().unwrap());

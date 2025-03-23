@@ -5,7 +5,7 @@ pub mod ctr;  /// 控制流
 // use midi_file::core::{Channel, Clocks, DurationName, NoteNumber, Velocity};
 // use midi_file::file::{QuartersPerMinute, Track};
 
-use std::{collections::HashMap, rc::Rc};
+use std:: rc::Rc;
 
 use ctr::{Ctr, RetVal};
 
@@ -13,42 +13,14 @@ use crate::ast::expr::Expr;
 use crate::ast::stmt::{Asgn, ConstDecl, IfElse, Stmt, VarDecl, While};
 use crate::error::Error;
 
-use crate::{ast::{block::{Block, BlockId}, func::FuncCall, comp_unit::CompUnit}, semantic::{blocks::Blocks, scope::{BlockScope, Scopes}}};
+use crate::ast::{block::Block, func::FuncCall, comp_unit::CompUnit};
 
 /// 解释器
-pub struct Interpreter {
-  /// 指向当前分析检查到的 Block 的 Id
-  current_block_id: BlockId,
-
-  /// 根据 BlockId 快速定位到 Rc<Block>
-  block_table: HashMap<BlockId, Rc<Block>>,
-
-  /// 根据 BlockId 快速定位到 BlockScope
-  scope_table: HashMap<BlockId, BlockScope>,
-}
+pub struct Interpreter {}
 
 impl Interpreter {
-  pub fn new(blocks: Blocks, scopes: Scopes) -> Self {
-    Self {
-      current_block_id: 0,
-      block_table: blocks.get_block_table().clone(),
-      scope_table: scopes.get_scope_table().clone(),
-    }
-  }
-
-  /// 设置当前的 Block 的 Id
-  pub fn set_current_block(&mut self, block_id: BlockId) {
-    self.current_block_id = block_id;
-  }
-
-  /// 根据给定 BlockId 获取 Rc<Block>
-  pub fn get_block(&self, block_id: BlockId) -> Result<Rc<Block>, Error> {
-    Ok(self.block_table.get(&block_id).ok_or_else(|| Error::RuntimeError(format!("can't get this block: {}", block_id))).unwrap().clone())
-  }
-
-  /// 根据给定 BlockId 获取 BlockScope
-  pub fn get_scope(&self, block_id: BlockId) -> Result<BlockScope, Error> {
-    Ok(self.scope_table.get(&block_id).ok_or_else(|| Error::RuntimeError(format!("can't get BlockScope of this block: {}", block_id))).unwrap().clone())
+  pub fn new() -> Self {
+    Self {}
   }
 
   /// 执行一段函数，返回结果为 RetVal 类型
@@ -65,7 +37,6 @@ impl Interpreter {
       param.set_int(res.unwrap());
     }
     
-    self.set_current_block(func_def.block.block_id);
     let res = self.interpret_block(func_def.block.clone());
     if res.is_err() {
       return Err(res.err().unwrap());
@@ -247,7 +218,6 @@ impl Interpreter {
     }
     let block = block_.clone().unwrap();
 
-    self.set_current_block(block.block_id);
     let res = self.interpret_block(block);
     if res.is_err() {
       return Err(res.err().unwrap());
