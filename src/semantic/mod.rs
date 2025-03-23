@@ -109,7 +109,7 @@ impl Analyzer {
       let scope = self.get_current_scope();
 
       let rval = const_decl.rvals[i].clone();
-      let mut res = scope.decl(&const_decl.btype, ident, true, rval);
+      let mut res = scope.decl(ident, true, rval);
       if res.is_err() {
         return Err(res.err().unwrap());
       }
@@ -132,7 +132,7 @@ impl Analyzer {
       let scope = self.get_current_scope();
 
       let rval = var_decl.rvals[i].clone();
-      let mut res = scope.decl(&var_decl.btype, ident, false, rval.clone());
+      let mut res = scope.decl(ident, false, rval.clone());
       if res.is_err() {
         return Err(res.err().unwrap());
       }
@@ -516,7 +516,7 @@ impl Analyzer {
     // 函数参数视为声明的变量，进行声明检查
     for param in &func_def.func_fparams {
       let FuncFParam{ident, rval} = param;
-      res = scope.decl(&param.get_btype(), ident, false, rval.clone());  /* 函数没有父级 Block，无需检查上层 */
+      res = scope.decl(ident, false, rval.clone());  /* 函数没有父级 Block，无需检查上层 */
       if res.is_err() {
         return Err(res.err().unwrap());
       }

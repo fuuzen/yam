@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::ast::block::BlockId;
-use crate::ast::btype::{BType, LVal, RVal};
+use crate::ast::btype::{LVal, RVal};
 use crate::ast::func::{FuncCall, FuncDef};
 use crate::error::Error;
 
@@ -24,12 +24,12 @@ impl BlockScope {
 
   /// 声明一个常量或变量。
   /// 作用域检查仅限于本 Block，故可以遮蔽上层 Block 的同名常量。
-  pub fn decl(&self, btype: &BType, ident: &String, const_: bool, rval: Rc<RVal>) -> Result<(), Error> {
+  pub fn decl(&self, ident: &String, const_: bool, rval: Rc<RVal>) -> Result<(), Error> {
     let mut t = self.symbol_table.borrow_mut();
     if t.get(ident).is_none() {
       t.insert(
         ident.clone(),
-        Symbol::new_val(btype, const_, rval)
+        Symbol::new_val(const_, rval)
       );
       Ok(())
     } else {
