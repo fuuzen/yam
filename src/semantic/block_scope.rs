@@ -2,13 +2,11 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::ast::block::BlockId;
 use crate::ast::btype::{LVal, RVal};
 use crate::ast::func::{FuncCall, FuncDef};
 use crate::error::Error;
 
 use super::symbol::Symbol;
-use super::Analyzer;
 
 #[derive(Clone)]
 pub struct BlockScope {
@@ -117,27 +115,5 @@ impl BlockScope {
       func_call.bind_func_def(symbol_.unwrap().func_def.clone().unwrap());
       Ok(Some(symbol_.unwrap().func_def.clone().unwrap()))
     }
-  }
-}
-
-
-impl Analyzer {
-  /// 在哈希表中创建一个给定 BlockId 的新的 BlockScope
-  pub fn add_scope(&mut self, block_id: BlockId) -> Result<(), Error> {
-    let res = self.scope_table.insert(block_id, Rc::new(BlockScope::new()));
-    if res.is_some() {
-      return Err(Error::InternalError(format!("block id conflict: {}", block_id)));
-    }
-    Ok(())
-  }
-
-  /// 获取给定 BlockId 的父级 scope
-  pub fn get_parent_scope(&self, block_id: &BlockId) -> Result<Rc<BlockScope>, Error> {
-    self.scope_table.get(block_id).ok_or(Error::InternalError(format!("can't find parent block for this block {}", block_id))).cloned()
-  }
-
-  /// 获取给定 BlockId 的 &mut BlockScope
-  pub fn get_scope_by_id(&mut self, block_id: &BlockId) -> Result<Rc<BlockScope>, Error> {
-    self.scope_table.get_mut(block_id).ok_or(Error::InternalError(format!("can't find the scope of this block: {}", block_id))).cloned()
   }
 }
