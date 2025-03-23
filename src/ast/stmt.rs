@@ -80,14 +80,10 @@ pub struct Asgn {
 }
 
 #[derive(Debug)]
-pub struct If {
+pub struct IfElse {
   pub cond: Expr,
-  pub body: Box<Stmt>,
-}
-
-#[derive(Debug)]
-pub struct Else {
-  pub body: Box<Stmt>,
+  pub if_: Box<Stmt>,
+  pub else_: Option<Box<Stmt>>,
 }
 
 #[derive(Debug)]
@@ -105,8 +101,7 @@ pub enum Stmt {
   VarDecl(VarDecl),
   Asgn(Asgn),
   Block(Rc<Block>),
-  If(If),
-  Else(Else),
+  IfElse(IfElse),
   While(While),
   Break,
   Continue,

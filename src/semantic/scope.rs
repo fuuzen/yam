@@ -4,7 +4,6 @@ use std::rc::Rc;
 use crate::ast::block::BlockId;
 use crate::ast::btype::{BType, LVal, RVal};
 use crate::ast::func::{FuncCall, FuncDef};
-use crate::ast::stmt::Stmt;
 use crate::error::Error;
 
 use super::symbol::Symbol;
@@ -12,31 +11,12 @@ use super::symbol::Symbol;
 #[derive(Clone)]
 pub struct BlockScope {
   symbol_table: HashMap<String, Symbol>,
-
-  /// 当前 Block 内当前分析检查到的 Stmt 前有几个连续出现的 Stmt::If
-  /// 初始值为 0，当前 Stmt 若为 Stmt::If 则加 1，若为 Stmt::Else 则减 1，若都不是则归 0。
-  /// 若为负数则表示出现了 if 和 else 不匹配的情况。
-  if_else_stack: i32,
 }
 
 impl BlockScope {
   pub fn new() -> Self {
     Self {
       symbol_table: HashMap::new(),
-      if_else_stack: 0,
-    }
-  }
-
-  /// 按规则设置 if_else_stack，并检查其是否变为负数
-  pub fn if_else_check(&mut self, stmt: &Stmt) -> Result<(), Error> {
-    match stmt {
-      Stmt::If(_) => self.if_else_stack += 1,
-      Stmt::Else(_) => self.if_else_stack -= 1,
-      _ => self.if_else_stack = 0,
-    }
-    match self.if_else_stack < 0 {
-      true => Err(Error::SemanticError(format!("'else' can't pair with any 'if'"))),
-      false => Ok(())
     }
   }
 

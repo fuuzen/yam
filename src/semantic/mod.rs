@@ -421,17 +421,29 @@ impl Analyzer {
           return Err(res.err().unwrap());
         }
       },
-      _ => {}
+      Stmt::IfElse( ifelse ) => {
+        let mut res = self.expr_check(blocks, scopes, &ifelse.cond);
+        if res.is_err() {
+          return Err(res.err().unwrap());
+        }
+
+        res = self.stmt_check(blocks, scopes, &ifelse.if_);
+        if res.is_err() {
+          return Err(res.err().unwrap());
+        }
+
+        if ifelse.else_.is_some() {
+          res = self.stmt_check(blocks, scopes, ifelse.else_.as_ref().unwrap());
+          if res.is_err() {
+            return Err(res.err().unwrap());
+          }
+        }
+      },
     }
 
     let res_scope = scopes.get_scope(&cur_block_id);
     if res_scope.is_err() {
       return Err(res_scope.err().unwrap());
-    }
-
-    let res = res_scope.unwrap().if_else_check(stmt);
-    if res.is_err() {
-      return Err(res.err().unwrap());
     }
 
     Ok(())

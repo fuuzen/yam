@@ -220,35 +220,43 @@ Asgn: Asgn = {
   <lval: LVal> "=" <expr: Expr> ";" => Asgn{ <> },
 }
 
-If: If = {
-  "if" "(" <cond: Expr> ")" <body: Stmt> => If {
-    cond,
-    body: Box::new(body),
-  },
-}
-
-Else: Else = {
-  "else" <body: Stmt>  => Else {
-    body: Box::new(body),
-  },
-}
-
-While: While = {
-  "while" "(" <cond: Expr> ")" <body: Stmt> => While {
-    cond,
-    body: Box::new(body),
-  },
-}
-
 Stmt: Stmt = {
+  <OpenStmt> => <>,
+  <MatchedStmt> => <>,
+}
+
+OpenStmt: Stmt = {
+  "if" "(" <cond: Expr> ")" <if_: Stmt> => Stmt::IfElse( IfElse {
+    cond,
+    if_: Box::new(if_),
+    else_: None,
+  }),
+  "if" "(" <cond: Expr> ")" <if_: MatchedStmt> "else" <else_: OpenStmt> => Stmt::IfElse( IfElse {
+    cond,
+    if_: Box::new(if_),
+    else_: Some(Box::new(else_)),
+  }),
+  "while" "(" <cond: Expr> ")" <body: OpenStmt> => Stmt::While( While {
+    cond,
+    body: Box::new(body),
+  }),
+}
+
+MatchedStmt: Stmt = {
+  "if" "(" <cond: Expr> ")" <if_: MatchedStmt> "else" <else_: MatchedStmt> => Stmt::IfElse( IfElse {
+    cond,
+    if_: Box::new(if_),
+    else_: Some(Box::new(else_)),
+  }),
+  "while" "(" <cond: Expr> ")" <body: MatchedStmt> => Stmt::While( While {
+    cond,
+    body: Box::new(body),
+  }),
   <Option<Expr>> ";" => Stmt::Expr( <> ),
   <ConstDecl> => Stmt::ConstDecl( <> ),
   <VarDecl> => Stmt::VarDecl( <> ),
   <Asgn> => Stmt::Asgn( <> ),
   <Block> => Stmt::Block( <> ),
-  <If> => Stmt::If( <> ),
-  <Else> => Stmt::Else( <> ),
-  <While> => Stmt::While( <> ),
   "break" ";" => Stmt::Break,
   "continue" ";" => Stmt::Continue,
   "return" ";" => Stmt::Return( None ),

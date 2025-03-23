@@ -26,7 +26,7 @@ fn main() -> Result<()> {
     println!("{}", parse_res.unwrap_err());
     return Ok(());
   }
-  println!("Lexical syntactic parsed successflly");
+  println!("Lexical and syntactic parsed successfully");
   let comp_unit = parse_res.as_ref().unwrap();
 
   let content = format!("{:#?}", comp_unit);

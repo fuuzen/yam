@@ -10,10 +10,10 @@ use std::{collections::HashMap, rc::Rc};
 use ctr::{Ctr, RetVal};
 
 use crate::ast::expr::Expr;
-use crate::ast::stmt::{Asgn, ConstDecl, ConstDef, Else, If, Stmt, VarDecl, While};
+use crate::ast::stmt::{Asgn, ConstDecl, IfElse, Stmt, VarDecl, While};
 use crate::error::Error;
 
-use crate::{ast::{block::{Block, BlockId}, func::FuncCall, comp_unit::CompUnit}, semantic::{blocks::Blocks, scope::{BlockScope, Scopes}, symbol::Symbol}};
+use crate::{ast::{block::{Block, BlockId}, func::FuncCall, comp_unit::CompUnit}, semantic::{blocks::Blocks, scope::{BlockScope, Scopes}}};
 
 /// 解释器
 pub struct Interpreter {
@@ -122,11 +122,7 @@ impl Interpreter {
     Ok(Ctr::None)
   }
 
-  pub fn intpret_if(&self, if_: &If) -> Result<Ctr, Error> {
-    Ok(Ctr::None)
-  }
-
-  pub fn intpret_else(&self, else_: &Else) -> Result<Ctr, Error> {
+  pub fn intpret_ifelse(&self, ifelse: &IfElse) -> Result<Ctr, Error> {
     Ok(Ctr::None)
   }
 
@@ -183,8 +179,7 @@ impl Interpreter {
       Stmt::VarDecl( var_decl ) => self.interpret_var_decl(var_decl),
       Stmt::Asgn( asgn ) => self.intpret_asgn(asgn),
       Stmt::Block( block ) => self.intpret_block(block.clone()),
-      Stmt::If( if_ ) => self.intpret_if(if_),
-      Stmt::Else( else_ ) => self.intpret_else(else_),
+      Stmt::IfElse( if_ ) => self.intpret_ifelse(if_),
       Stmt::While( while_ ) => self.intpret_while(while_),
       Stmt::Break => Ok(Ctr::Break),
       Stmt::Continue => Ok(Ctr::Continue),

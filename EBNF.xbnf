@@ -1,55 +1,58 @@
-UnaryOp       ::= "+" | "-" | "!";
-MulOp         ::= "*" | "/" | "%";
-AddOp         ::= "+" | "-";
-RelOp         ::= "<" | ">" | "<=" | ">=";
-EqOp          ::= "==" | "!=";
+UnaryOp     ::= "+" | "-" | "!";
+MulOp       ::= "*" | "/" | "%";
+AddOp       ::= "+" | "-";
+RelOp       ::= "<" | ">" | "<=" | ">=";
+EqOp        ::= "==" | "!=";
 
-BType         ::= "int";      /* Base Type */
-Number        ::= INT_CONST;  /* int -> i32 */
-LVal          ::= IDENT       /* TODO: 支持数组，即左值支持下标 */
+BType       ::= "int" | "bool";      /* Base Type */
+Number      ::= INT_CONST;           /* int -> i32 */
+LVal        ::= IDENT                /* TODO: 支持数组，即左值支持下标 */
 
-PrimaryExpr   ::= "(" Expr ")" | LVal | Number | FuncCall;
-UnaryExpr     ::= PrimaryExpr | UnaryOp UnaryExpr;
-MulExpr       ::= UnaryExpr | MulExpr MulOp UnaryExpr;
-AddExpr       ::= MulExpr | AddExpr AddOp MulExpr;
-RelExpr       ::= AddExpr | RelExpr RelOp AddExpr;
-EqExpr        ::= RelExpr | EqExpr EqOp RelExpr;
-LAndExpr      ::= EqExpr | LAndExpr "&&" EqExpr;
-LOrExpr       ::= LAndExpr | LOrExpr "||" LAndExpr;
-Expr          ::= LOrExpr;
+PrimaryExpr ::= "(" Expr ")" | LVal | Number | FuncCall;
+UnaryExpr   ::= PrimaryExpr | UnaryOp UnaryExpr;
+MulExpr     ::= UnaryExpr | MulExpr MulOp UnaryExpr;
+AddExpr     ::= MulExpr | AddExpr AddOp MulExpr;
+RelExpr     ::= AddExpr | RelExpr RelOp AddExpr;
+EqExpr      ::= RelExpr | EqExpr EqOp RelExpr;
+LAndExpr    ::= EqExpr | LAndExpr "&&" EqExpr;
+LOrExpr     ::= LAndExpr | LOrExpr "||" LAndExpr;
+Expr        ::= LOrExpr;
 
-FuncType      ::= "void" | BType;
-FuncFParams   ::= FuncFParam {"," FuncFParam};
-FuncFParam    ::= BType IDENT;
-FuncRParams   ::= Expr {"," Expr};
-FuncDef       ::= FuncType IDENT "(" [FuncFParams] ")" Block;  /* 函数定义(无声明，直接实现) */
-FuncCall      ::= IDENT "(" [FuncRParams] ")";                 /* 函数调用 */
+FuncType    ::= "void" | BType;
+FuncFParams ::= FuncFParam {"," FuncFParam};
+FuncFParam  ::= BType IDENT;
+FuncRParams ::= Expr {"," Expr};
+FuncDef     ::= FuncType IDENT "(" [FuncFParams] ")" Block;  /* 函数定义(无声明，直接实现) */
+FuncCall    ::= IDENT "(" [FuncRParams] ")";                 /* 函数调用 */
 
-ConstDef      ::= IDENT "=" Expr;
-ConstDefs     ::= ConstDef {"," ConstDef}
-ConstDecl     ::= "const" BType ConstDefs ";";
-VarDef        ::= IDENT | IDENT "=" Expr;
-VarDefs       ::= VarDef {"," VarDef}
-VarDecl       ::= BType VarDef {"," VarDef} ";";
-Decl          ::= ConstDecl | VarDecl;                  /* 声明语句 */
-Asgn          ::= LVal "=" Expr ";"                     /* 赋值语句 */
-If            ::= "if" "(" Expr ")" Stmt ["else" Stmt]  /* if 语句 */
-While         ::= "while" "(" Expr ")" Stmt             /* while 语句 */
-Break         ::= "break" ";"                           /* break */
-Continue      ::= "continue" ";"                        /* continue */
-Return        ::= "return" [Expr] ";"                   /* return */
+ConstDef    ::= IDENT "=" Expr;
+ConstDefs   ::= ConstDef {"," ConstDef};
+ConstDecl   ::= "const" BType ConstDefs ";";
+VarDef      ::= IDENT | IDENT "=" Expr;
+VarDefs     ::= VarDef {"," VarDef};
+VarDecl     ::= BType VarDef {"," VarDef} ";";
+Decl        ::= ConstDecl | VarDecl;                  /* 声明语句 */
+Asgn        ::= LVal "=" Expr ";";                    /* 赋值语句 */
+While       ::= "while" "(" Expr ")" Stmt;            /* while 语句 */
+Break       ::= "break" ";";                          /* break */
+Continue    ::= "continue" ";";                       /* continue */
+Return      ::= "return" [Expr] ";";                  /* return */
 
-Stmt ::= Block
-       | Decl
-       | Asgn
-       | [Expr] ";"   /* 可能用于单纯的函数调用，以及单纯的 ';' 符号 */
-       | If
-       | While
-       | Break
-       | Continue
-       | Return
-       ;
+Stmt        ::= MatchedStmt | OpenStmt;
+OpenStmt    ::= "if" "(" Expr ")" Stmt
+              | "if" "(" Expr ")" MatchedStmt "else" OpenStmt
+              ;
+MatchedStmt ::= "if" "(" Expr ")" MatchedStmt "else" MatchedStmt
+              | Block
+              | Decl
+              | Asgn
+              | [Expr] ";"   /* 可能用于单纯的函数调用，以及单纯的 ';' 符号 */
+              | While
+              | Break
+              | Continue
+              | Return
+              ;
 
-Block         ::= "{" {Stmt} "}";
+Block       ::= "{" {Stmt} "}";
 
-CompUnit      ::= {Decl | FuncDef} "main" IDENT Block;
+CompUnit    ::= {Decl | FuncDef} "main" IDENT Block;
