@@ -1,4 +1,4 @@
-use super::{btype::LVal, func::FuncCall};
+use super::{val::LVal, func::FuncCall};
 
 pub type IntConst = i32;
 pub type Expr = LOrExpr;

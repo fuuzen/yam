@@ -7,7 +7,7 @@ use crate::error::Error;
 use super::Analyzer;
 
 impl Analyzer {
-  /// 以非函数 Block 为单位对当前的 Block 进行语义检查。
+  /// 以普通 Block 为单位对当前的 Block 进行语义检查。
   /// - Blocks 和 Scopes 表中添加当前 Block;
   /// - 设置当前 Block 的 parent_id 为 Analyzer 的 current_block_id;
   /// - 设置 Analyzer 的 current_block 为当前 Block;
@@ -55,6 +55,8 @@ impl Analyzer {
   }
 
   /// 以 global Block 为单位对当前的 Block 进行语义检查。
+  /// 全局变量、常量、函数的作用域视为一个 Block，这个特殊 Block 就是 global Block。
+  /// 这个 Block 没有父级 Block，不设置其 parent_id，其 parent_id 将保持为 None。
   /// - 设置全局 Block 为 CompUnit 的 Block;
   /// - Blocks 和 Scopes 表中添加当前 Block;
   /// - 设置 Analyzer 的 current_block 为当前 Block;

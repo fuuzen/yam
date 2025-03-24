@@ -148,25 +148,20 @@ impl Interpreter {
 
   pub fn interpret_stmt(&mut self, stmt: &Stmt) -> Result<Ctr, Error> {
     match stmt {
-      Stmt::Expr( expr_ ) => {
-        if expr_.is_some() {
-          let res = self.calc_expr(expr_.as_ref().unwrap());
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          }
-        }
-        Ok(Ctr::None)
-      },
+      Stmt::FuncDef( _ ) => Ok(Ctr::None),
+      Stmt::Break => Ok(Ctr::Break),
+      Stmt::Continue => Ok(Ctr::Continue),
       Stmt::ConstDecl( const_decl ) => self.interpret_const_decl(const_decl),
       Stmt::VarDecl( var_decl ) => self.interpret_var_decl(var_decl),
       Stmt::Asgn( asgn ) => self.interpret_asgn(asgn),
       Stmt::Block( block ) => self.interpret_block(block.clone()),
       Stmt::IfElse( if_ ) => self.interpret_ifelse(if_),
       Stmt::While( while_ ) => self.interpret_while(while_),
-      Stmt::Break => Ok(Ctr::Break),
-      Stmt::Continue => Ok(Ctr::Continue),
       Stmt::Return( expr_ ) => self.interpret_return(expr_),
-      _ => Ok(Ctr::None),
+      Stmt::Expr( expr_ ) => match expr_.is_some() {
+        true => self.calc_expr(expr_.as_ref().unwrap()).map(|_| { Ctr::None }),
+        false => Ok(Ctr::None),
+      },
     }
   }
 

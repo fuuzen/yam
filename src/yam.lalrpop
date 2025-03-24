@@ -12,7 +12,7 @@ match {
 }
 
 // .lalrpop 不能用 mod 语句
-use crate::ast::btype::{*};
+use crate::ast::val::{*};
 use std::rc::Rc;
 
 BType: BType = {

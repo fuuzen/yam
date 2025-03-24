@@ -1,6 +1,6 @@
 use std::{cell::RefCell, fmt, rc::Rc};
 
-/// 每一种 Base Type 的默认初始值
+/// Int 类型的默认初始值
 pub const INT_DEFAULT: i32 = 0;
 
 /// 所有的 Base Type 的定义

@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use super::{block::Block, btype::{BType, RVal}, expr::Expr};
+use super::{block::Block, val::{BType, RVal}, expr::Expr};
 
 #[derive(Debug)]
 pub enum FuncType {

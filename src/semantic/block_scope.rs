@@ -2,12 +2,14 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::ast::btype::{LVal, RVal};
+use crate::ast::val::{LVal, RVal};
 use crate::ast::func::{FuncCall, FuncDef};
 use crate::error::Error;
 
 use super::symbol::Symbol;
 
+/// 一个 Block 的作用域。
+/// 语义检查阶段的函数、左值的底层绑定操作在这里实现。
 #[derive(Clone)]
 pub struct BlockScope {
   symbol_table: Rc<RefCell<HashMap<String, Symbol>>>,

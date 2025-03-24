@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
 use super::block::Block;
-use super::btype::RVal;
+use super::val::RVal;
 use super::func::FuncDef;
-use super::{btype::{BType, LVal}, expr::Expr};
+use super::{val::{BType, LVal}, expr::Expr};
 
 #[derive(Debug)]
 pub struct ConstDef {

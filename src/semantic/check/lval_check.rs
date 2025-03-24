@@ -1,11 +1,9 @@
-use crate::{ast::btype::LVal, error::Error};
+use crate::{ast::val::LVal, error::Error};
 
 use super::Analyzer;
 
 
-
 impl Analyzer {
-
   /// 变量或常量调用的检查。
   /// 从这一级 Block 开始不断往上层 Block 检查符号是否存在。
   pub fn lval_check(&mut self, lval: &LVal) -> Result<(), Error> {
