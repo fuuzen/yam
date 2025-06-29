@@ -1,4 +1,4 @@
-use crate::{ast::expr::{AddExpr, AddOp, EqExpr, Expr, LAndExpr, MulExpr, MulOp, PrimaryExpr, RelExpr, RelOp, UnaryExpr, UnaryOp}, error::Error};
+use crate::{ast::{expr::{AddExpr, AddOp, EqExpr, Expr, LAndExpr, MulExpr, MulOp, PrimaryExpr, RelExpr, RelOp, UnaryExpr, UnaryOp}, val::Value}, error::Error};
 
 use super::{ctr::RetVal, Interpreter};
 
@@ -26,7 +26,10 @@ impl Interpreter {
         }
       },
       PrimaryExpr::LVal(lval) => {
-        lval.get_int()
+        match lval.get_value() {
+          Value::Int( v ) => v,
+          _ => return Err(Error::RuntimeError(lval.ident.clone() + " is not int")),
+        }
       },
       PrimaryExpr::Number(v) => {
         v.clone()

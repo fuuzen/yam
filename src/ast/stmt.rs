@@ -1,14 +1,28 @@
 use std::rc::Rc;
 
+use crate::ast::measure::Measure;
+use crate::ast::note::Note;
+use crate::ast::phrase::Phrase;
+use crate::ast::track::Track;
+
 use super::block::Block;
 use super::val::RVal;
 use super::func::FuncDef;
 use super::{val::{BType, LVal}, expr::Expr};
 
 #[derive(Debug)]
+pub enum AsgnRVal {
+  Expr(Expr),
+  Note(Note),
+  Measure(Measure),
+  Phrase(Phrase),
+  Track(Track),
+}
+
+#[derive(Debug)]
 pub struct ConstDef {
   pub ident: String,
-  pub expr: Expr,
+  pub rval: AsgnRVal,
 }
 
 #[derive(Debug)]
@@ -25,10 +39,7 @@ impl ConstDecl {
     let len = const_defs.len();
     let mut rvals = Vec::new();
     for _ in 0..len {
-      let rval = match btype {
-        BType::Int => RVal::new_int(),
-        BType::Bool => unimplemented!(),
-      };
+      let rval = RVal::new_with_btype(btype.clone());
       rvals.push(Rc::new(rval));
     }
     ConstDecl {
@@ -42,7 +53,7 @@ impl ConstDecl {
 #[derive(Debug)]
 pub struct VarDef {
   pub ident: String,
-  pub expr_: Option<Expr>,
+  pub rval_: Option<AsgnRVal>,
 }
 
 #[derive(Debug)]
@@ -59,10 +70,7 @@ impl VarDecl {
     let len = var_defs.len();
     let mut rvals = Vec::new();
     for _ in 0..len {
-      let rval = match btype {
-        BType::Int => RVal::new_int(),
-        BType::Bool => unimplemented!(),
-      };
+      let rval = RVal::new_with_btype(btype.clone());
       rvals.push(Rc::new(rval));
     }
     VarDecl {
@@ -76,7 +84,7 @@ impl VarDecl {
 #[derive(Debug)]
 pub struct Asgn {
   pub lval: LVal,
-  pub expr: Expr,
+  pub rval: AsgnRVal,
 }
 
 #[derive(Debug)]

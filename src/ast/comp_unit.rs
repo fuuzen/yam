@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use crate::ast::score::Score;
+
 use super::func::FuncDef;
 use super::block::Block;
 use super::stmt::{ConstDecl, VarDecl};
@@ -14,4 +16,5 @@ pub enum Def {
 #[derive(Debug)]
 pub struct CompUnit {
   pub block: Rc<Block>,
+  pub score: Score
 }

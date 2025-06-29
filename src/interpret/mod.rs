@@ -10,7 +10,8 @@ use std:: rc::Rc;
 use ctr::{Ctr, RetVal};
 
 use crate::ast::expr::Expr;
-use crate::ast::stmt::{Asgn, ConstDecl, IfElse, Stmt, VarDecl, While};
+use crate::ast::stmt::{Asgn, AsgnRVal, ConstDecl, IfElse, Stmt, VarDecl, While};
+use crate::ast::val::Value;
 use crate::error::Error;
 
 use crate::ast::{block::Block, func::FuncCall, comp_unit::CompUnit};
@@ -34,7 +35,7 @@ impl Interpreter {
       if res.is_err() {
         return Err(res.err().unwrap());
       }
-      param.set_int(res.unwrap());
+      param.set_value(Value::Int(res.unwrap()));
     }
     
     let res = self.interpret_block(func_def.block.clone());
@@ -52,13 +53,18 @@ impl Interpreter {
     let len = const_decl.const_defs.len();
     for i in 0..len {
       let const_def = &const_decl.const_defs[i];
-      let res = self.calc_expr(&const_def.expr);
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
+      match &const_def.rval {
+        AsgnRVal::Expr( expr) => {
+          let res = self.calc_expr(expr);
+          if res.is_err() {
+            return Err(res.err().unwrap());
+          }
 
-      let rval = const_decl.rvals[i].clone();
-      rval.set_int(res.unwrap());
+          let rval = const_decl.rvals[i].clone();
+          rval.set_value(Value::Int(res.unwrap()));
+        }
+        _ => unimplemented!()  // TODO
+      }
     }
     Ok(Ctr::None)
   }
@@ -67,29 +73,41 @@ impl Interpreter {
     let len = var_decl.var_defs.len();
     for i in 0..len {
       let var_def = &var_decl.var_defs[i];
-      let expr_ = var_def.expr_.as_ref();
-      if expr_.is_none() {
+      let asgn_rval_ = var_def.rval_.as_ref();
+      if asgn_rval_.is_none() {
         continue;
       }
 
-      let res = self.calc_expr(expr_.unwrap());
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
+      match asgn_rval_.as_ref().unwrap() {
+        AsgnRVal::Expr( expr) => {
+          let res = self.calc_expr(expr);
+          if res.is_err() {
+            return Err(res.err().unwrap());
+          }
 
-      let rval = var_decl.rvals[i].clone();
-      rval.set_int(res.unwrap());
+          let rval = var_decl.rvals[i].clone();
+          rval.set_value(Value::Int(res.unwrap()));
+        }
+        _ => unimplemented!()  // TODO
+      }
     }
     Ok(Ctr::None)
   }
 
   pub fn interpret_asgn(&mut self, asgn: &Asgn) -> Result<Ctr, Error> {
-    let res = self.calc_expr(&asgn.expr);
-    if res.is_err() {
-      return Err(res.err().unwrap());
+    
+    match &asgn.rval {
+      AsgnRVal::Expr( expr) => {
+        let res = self.calc_expr(expr);
+        if res.is_err() {
+          return Err(res.err().unwrap());
+        }
+
+        let lval = asgn.lval.clone();
+        lval.set_value(Value::Int(res.unwrap()));
+      }
+      _ => unimplemented!()  // TODO
     }
-    let lval = asgn.lval.clone();
-    lval.set_int(res.unwrap());
     Ok(Ctr::None)
   }
 
@@ -120,9 +138,9 @@ impl Interpreter {
         return Err(res.err().unwrap());
       }
 
-      match res.clone().unwrap() {
-        Ctr::Break => return Ok(Ctr::None), // while 循环结束
-        Ctr::Return( _ ) => return res,
+      match res {
+        Ok(Ctr::Break) => return Ok(Ctr::None), // while 循环结束
+        Ok(Ctr::Return( _ )) => return res,
         _ => (),
       }
 
@@ -172,9 +190,9 @@ impl Interpreter {
         return Err(res.err().unwrap());
       }
 
-      match res.clone().unwrap() {
-        Ctr::Break => return res,
-        Ctr::Return( _ ) => return res,
+      match res {
+        Ok(Ctr::Break) => return res,
+        Ok(Ctr::Return( _ )) => return res,
         _ => (),
       }
     }
@@ -218,7 +236,7 @@ impl Interpreter {
       return Err(res.err().unwrap());
     }
 
-    match res.clone().unwrap() {
+    match res.unwrap() {
       Ctr::Return( v ) => Ok(v),
       _ => Ok(RetVal::Void),
     }

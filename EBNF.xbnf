@@ -3,8 +3,8 @@ MulOp       ::= "*" | "/" | "%";
 AddOp       ::= "+" | "-";
 RelOp       ::= "<" | ">" | "<=" | ">=";
 EqOp        ::= "==" | "!=";
+BType       ::= "int" | "note" | "measure" | "phrase" | "track";
 
-BType       ::= "int" | "bool";      /* Base Type */
 Number      ::= INT_CONST;           /* int -> i32 */
 LVal        ::= IDENT                /* TODO: 支持数组，即左值支持下标 */
 
@@ -16,26 +16,40 @@ RelExpr     ::= AddExpr | RelExpr RelOp AddExpr;
 EqExpr      ::= RelExpr | EqExpr EqOp RelExpr;
 LAndExpr    ::= EqExpr | LAndExpr "&&" EqExpr;
 LOrExpr     ::= LAndExpr | LOrExpr "||" LAndExpr;
-Expr        ::= LOrExpr;
+Expr        ::= LOrExpr
 
+Note        ::= Expr ["=" Expr] | Expr "'" NoteExpr;
+NoteRVal    ::= Note | LVal | FuncCall
+MeasureAttr ::= "<" Expr ":" Expr [ "," Expr  ] ">";
+MeasureUnit ::= "." | "<" | ">" | NoteRVal;
+Measure     ::= [ MeasureAttr ] "|" {MeasureUnit} "|";
+MeasureRVal ::= Measure | LVal | FuncCall
+Phrase      ::= [ MeasureAttr ] "[" {MeasureRVal} "]";
+PhraseRVal  ::= Phrase | LVal | FuncCall
+Track       ::= "{" {PhraseRVal} "}";
+
+/* 可能是任何赋值，需要依据 LVal 类型检查 */
+AsgnRVal    ::= Expr | Note | Measure | Phrase | Track;
+Asgn        ::= LVal "=" AsgnRVal;
+
+/* 声明部分 */
+ConstDef    ::= IDENT "=" AsgnRVal;
+ConstDecl   ::= "const" BType ConstDef {"," ConstDef} ";";
+VarDef      ::= IDENT | IDENT "=" AsgnRVal;
+VarDecl     ::= BType VarDef {"," VarDef}; ";";
+Decl        ::= ConstDecl | VarDecl;
+
+/* 函数相关 */
 FuncType    ::= "void" | BType;
 FuncFParams ::= FuncFParam {"," FuncFParam};
-FuncFParam  ::= BType IDENT;
-FuncRParams ::= Expr {"," Expr};
+FuncFParam  ::= Type IDENT;
+FuncRParams ::= AsgnRVal {"," AsgnRVal};
 FuncDef     ::= FuncType IDENT "(" [FuncFParams] ")" Block;  /* 函数定义(无声明，直接实现) */
 FuncCall    ::= IDENT "(" [FuncRParams] ")";                 /* 函数调用 */
 
-ConstDef    ::= IDENT "=" Expr;
-ConstDefs   ::= ConstDef {"," ConstDef};
-ConstDecl   ::= "const" BType ConstDefs ";";
-VarDef      ::= IDENT | IDENT "=" Expr;
-VarDefs     ::= VarDef {"," VarDef};
-VarDecl     ::= BType VarDef {"," VarDef} ";";
-Decl        ::= ConstDecl | VarDecl;                  /* 声明语句 */
-Asgn        ::= LVal "=" Expr ";";                    /* 赋值语句 */
-Break       ::= "break" ";";                          /* break */
-Continue    ::= "continue" ";";                       /* continue */
-Return      ::= "return" [Expr] ";";                  /* return */
+Break       ::= "break" ";";                /* break */
+Continue    ::= "continue" ";";             /* continue */
+Return      ::= "return" [NoteExpr] ";";    /* return */
 
 Stmt        ::= MatchedStmt | OpenStmt;
 OpenStmt    ::= "if" "(" Expr ")" Stmt
@@ -45,10 +59,10 @@ OpenStmt    ::= "if" "(" Expr ")" Stmt
 MatchedStmt ::= "if" "(" Expr ")" MatchedStmt "else" MatchedStmt
               | "while" "(" Expr ")" MatchedStmt
               | Block
+              | While
               | Decl
               | Asgn
-              | [Expr] ";"   /* 可能用于单纯的函数调用，以及单纯的 ';' 符号 */
-              | While
+              | [NoteExpr] ";"   /* 可能用于单纯的函数调用，以及单纯的 ';' 符号 */
               | Break
               | Continue
               | Return
@@ -56,4 +70,10 @@ MatchedStmt ::= "if" "(" Expr ")" MatchedStmt "else" MatchedStmt
 
 Block       ::= "{" {Stmt} "}";
 
-CompUnit    ::= {Decl | FuncDef};
+ChannelStmt ::= "@" Expr "<-" TrackRVal ";"  /* 设置输入轨道 */
+              | "@" Expr "->" Expr ";"       /* 设置midi乐器,0-127 */
+              ;
+
+Score       ::= "@" "score" "{" {Stmt} {ChannelStmt} "}"
+
+CompUnit    ::= {Decl | FuncDef} Score;

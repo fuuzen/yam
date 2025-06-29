@@ -1,7 +1,6 @@
 use super::{val::LVal, func::FuncCall};
 
 pub type IntConst = i32;
-pub type Expr = LOrExpr;
 
 #[derive(Debug, PartialEq)]
 pub enum UnaryOp {
@@ -84,3 +83,6 @@ pub struct LAndExpr {
 pub struct LOrExpr {
   pub land_exps: Vec<LAndExpr>,
 }
+
+pub type Expr = LOrExpr;
+pub type ExprRVal = Expr;

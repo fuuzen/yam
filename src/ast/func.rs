@@ -1,5 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
+use crate::ast::val::Value;
+
 use super::{block::Block, val::{BType, RVal}, expr::Expr};
 
 #[derive(Debug)]
@@ -18,29 +20,16 @@ pub struct FuncFParam {
 impl FuncFParam {
   /// 初始化为类型 BType 默认值
   pub fn new(btype: BType, ident: String) -> Self {
-    let rval = match btype {
-      BType::Int => RVal::new_int(),
-      BType::Bool => unimplemented!(),
-    };
+      let rval = RVal::new_with_btype(btype.clone());
     FuncFParam {
       ident,
       rval: Rc::new(rval),
     }
   }
 
-  /// 获取 BType
-  pub fn get_btype(&self) -> BType {
-    self.rval.get_btype()
-  }
-
-  /// 执行阶段获取 int 值
-  pub fn get_int(&self) -> i32 {
-    self.rval.get_int()
-  }
-
-  /// 赋值 int
-  pub fn set_int(&self, value: i32) {
-    self.rval.set_int(value);
+  /// 赋值
+  pub fn set_value(&self, value: Value) {
+    self.rval.set_value(value);
   }
 }
 

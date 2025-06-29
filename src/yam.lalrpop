@@ -17,6 +17,10 @@ use std::rc::Rc;
 
 BType: BType = {
   "int" => BType::Int,
+  "note" => BType::Note,
+  "measure" => BType::Measure,
+  "phrase" => BType::Phrase,
+  "track" => BType::Track,
 }
 
 // 如果匹配到标识符, 就返回这个字符串
@@ -105,7 +109,7 @@ Expr: Expr = {
 PrimaryExpr: PrimaryExpr = {
   "(" <Expr> ")" => PrimaryExpr::Expr( <> ),
   <LVal> => PrimaryExpr::LVal( <> ),
-  <Number> => PrimaryExpr::Number( <> ),
+  <IntConst> => PrimaryExpr::Number( <> ),
   <FuncCall> => PrimaryExpr::FuncCall( <> ),
 }
 
@@ -189,12 +193,131 @@ LOrExpr: LOrExpr = {
 }
 
 /******************************* exp 部分 结束 ******************************/
+/******************************* note 部分 开始 ******************************/
+
+use crate::ast::note::{*};
+
+// `'` 分隔的 T 规则匹配的至少有一个 `'` 的 T 列表,避免和 Expr 冲突
+VecNote<T>: Vec<T> = {
+  <T> "'" <T> => vec![ <> ],
+  <mut v : VecNote<T>> "'" <t: T> => {
+    v.push(t);
+    v
+  }
+}
+
+Note: Note = {
+  <notes: VecNote<Expr>> => Note {
+    notes: notes,
+    len: None
+  }
+}
+
+NoteRVal: Note = {
+  <expr: Expr> => Note {
+    notes: vec![expr],
+    len: None
+  },
+  <Note> => <> ,
+}
+
+/******************************* note 部分 结束 ******************************/
+/******************************* measure 部分 开始 ******************************/
+
+use crate::ast::measure::{*};
+
+Tempo: Expr = {
+  "," <Expr> => <>
+}
+
+MeasureAttr: MeasureAttr = {
+  "(" <top_num: Expr> ":" <bottom_num: Expr> <tempo: Option<Tempo>> ")" => MeasureAttr { <> }
+}
+
+Len: Expr = { "=" <expr: Expr> => expr }
+
+MeasureUnit: MeasureUnit = {
+  "<" => MeasureUnit::TimeDilation,
+  ">" => MeasureUnit::TimeCompression,
+  "." => MeasureUnit::Rest,
+  <note: NoteRVal> <len: Option<Len>> => MeasureUnit::Note(Note{
+    notes: note.notes,
+    len: len
+  }),
+}
+
+Measure: Measure = {
+  <attr: Option<MeasureAttr>> "|" <content: VecComma<MeasureUnit>> "|" => Measure{ <> }
+}
+
+MeasureRVal:MeasureRVal = {
+  <Measure> => MeasureRVal::Measure( <> ),
+  "@" <LVal> => MeasureRVal::LVal( <> ),
+  "$" <FuncCall> => MeasureRVal::FuncCall( <> )
+}
+
+/******************************* measure 部分 结束 ******************************/
+/******************************* pharse 部分 开始 ******************************/
+
+use crate::ast::phrase::{*};
+
+Phrase: Phrase = {
+  <attr: Option<MeasureAttr>> "[" <content: Vec<MeasureRVal>> "]" => Phrase{ <> }
+}
+
+PhraseRVal:PhraseRVal = {
+  <Phrase> => PhraseRVal::Phrase( <> ),
+  "@" <LVal> => PhraseRVal::LVal( <> ),
+  "$" <FuncCall> => PhraseRVal::FuncCall( <> )
+}
+
+/******************************* pharse 部分 结束 ******************************/
+/******************************* track 部分 开始 ******************************/
+
+use crate::ast::track::{*};
+
+Track: Track = {
+  "{" <content: Vec<PhraseRVal>> "}" => Track{ <> }
+}
+
+TrackRVal: TrackRVal = {
+  <Track> => TrackRVal::Track( <> ),
+  <LVal> => TrackRVal::LVal( <> ),
+  <FuncCall> => TrackRVal::FuncCall( <> )
+}
+
+/******************************* track 部分 结束 ******************************/
+/******************************* score 部分 开始 ******************************/
+
+use crate::ast::score::{*};
+
+ChannelStmt: ChannelStmt = {
+  "@" <channel: Expr> "<-" <track: TrackRVal> ";" => ChannelStmt::SetChannelTrack(SetChannelTrack{ <> }),
+  "@" <channel: Expr> "->" <instrument: Expr> ";" => ChannelStmt::SetChannelInstrument(SetChannelInstrument{ <> })
+}
+
+Score: Score = {
+  "@" "score" "{" <stmts: Stmts> <channel_stmts: Vec<ChannelStmt>> "}" => Score{
+    block: Rc::new(Block::new(stmts)),
+    channel_stmts: channel_stmts
+  }
+}
+
+/******************************* score 部分 结束 ******************************/
 /******************************* stmt 部分 开始 ******************************/
 
 use crate::ast::stmt::{*};
 
+AsgnRVal: AsgnRVal = {
+  <Expr> => AsgnRVal::Expr( <> ),
+  <Note> => AsgnRVal::Note( <> ),
+  <Measure> => AsgnRVal::Measure( <> ),
+  <Phrase> => AsgnRVal::Phrase( <> ),
+  <Track> => AsgnRVal::Track( <> )
+}
+
 ConstDef: ConstDef = {
-  <ident: Ident> "=" <expr: Expr> => ConstDef{ <> },
+  <ident: Ident> "=" <rval: AsgnRVal> => ConstDef{ <> },
 }
 
 ConstDecl: ConstDecl = {
@@ -202,14 +325,7 @@ ConstDecl: ConstDecl = {
 }
 
 VarDef: VarDef = {
-  <ident: Ident> => VarDef{
-    ident,
-    expr_ : None,
-  },
-  <ident: Ident> "=" <expr_: Expr> => VarDef{
-    ident,
-    expr_ : Some(expr_),
-  },
+  <ident: Ident> "=" <rval_: Option<AsgnRVal>> => VarDef{ <> },
 }
 
 VarDecl: VarDecl = {
@@ -217,7 +333,7 @@ VarDecl: VarDecl = {
 }
 
 Asgn: Asgn = {
-  <lval: LVal> "=" <expr: Expr> ";" => Asgn{ <> },
+  <lval: LVal> "=" <rval: AsgnRVal> ";" => Asgn{ <> },
 }
 
 Stmt: Stmt = {
@@ -339,7 +455,7 @@ Def: Def = {
 
 /* 定义为 pub 导出语法解析器 */
 pub CompUnit: CompUnit = {
-  <defs: Option<Vec<Def>>> => {
+  <defs: Option<Vec<Def>>> <score: Score> => {
     let stmts = match defs {
       Some(defs) => defs.into_iter().map(|def| match def {
         Def::ConstDecl(const_decl) => Stmt::ConstDecl(const_decl),
@@ -350,6 +466,7 @@ pub CompUnit: CompUnit = {
     };
     CompUnit {
       block: Rc::new(Block::new(stmts)),
+      score: score
     }
   },
 }
