@@ -380,7 +380,7 @@ MatchedStmt: Stmt = {
 }
 
 Stmts: Vec<Stmt> = {
-  <stmt: Stmt> => vec![ stmt ],
+  () => vec![],
   <stmts: Stmts> <stmt: Stmt> => {
     let mut v = stmts;
     v.push(stmt);
