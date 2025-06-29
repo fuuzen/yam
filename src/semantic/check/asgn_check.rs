@@ -1,4 +1,4 @@
-use crate::{ast::stmt::{Asgn, AsgnRVal}, error::Error};
+use crate::{ast::stmt::Asgn, error::Error};
 
 use super::Analyzer;
 
@@ -18,14 +18,9 @@ impl Analyzer {
       return Err(Error::InternalError(format!("{} was declared but RVal of {} was not bound", lval.ident, lval.ident)));
     }
 
-    match &asgn.rval {
-      AsgnRVal::Expr( expr ) => {
-        res = self.expr_check(expr);
-        if res.is_err() {
-          return Err(res.err().unwrap());
-        }
-      },
-      _ => unimplemented!()  // TODO
+    res = self.asgn_rval_check(&asgn.rval, lval.rval.borrow().clone().unwrap().get_btype());
+    if res.is_err() {
+      return Err(res.err().unwrap());
     }
 
     Ok(())

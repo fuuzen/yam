@@ -6,9 +6,9 @@ use super::Analyzer;
 
 impl Analyzer {
   /// 函数调用的检查，包括函数是否存在、参数是否符合函数定义。
-  /// 由于目前 Base Type 只有 int(i32)，不需要检查对应参数是否类型匹配，
+  /// 返回函數的返回類型，交由上一級繼續檢查類型匹配。
   /// 仅需检查参数数量是否匹配、表达式是否合法。
-  pub fn func_call_check(&mut self, func_call: &FuncCall) -> Result<(), Error> {
+  pub fn func_call_check(&mut self, func_call: &FuncCall) -> Result<FuncType, Error> {
     let cur_block_id = self.current_block_id;
     
     let scope = self.get_current_scope();
@@ -43,21 +43,23 @@ impl Analyzer {
     }
 
     // 恢复当前 Block Id
-    let res = self.set_current_block(cur_block_id);
+    let mut res = self.set_current_block(cur_block_id);
     if res.is_err() {
       return Err(res.err().unwrap());
     }
 
     let len = func_def_.clone().unwrap().func_fparams.len();
+    let fparams = &func_def_.clone().unwrap().func_fparams;
     for i in 0..len {
-      let expr = &func_call.func_rparams[i];
-      let res = self.expr_check(expr);
+      let expect_type = fparams[i].rval.get_btype();
+      let asgn_rval = &func_call.func_rparams[i];
+      res = self.asgn_rval_check(&asgn_rval, expect_type);
       if res.is_err() {
         return Err(res.err().unwrap());
       }
     }
 
-    Ok(())
+    Ok(func_def_.clone().unwrap().func_type)
   }
 
   /// 以 FuncDef 为单位进行语义检查。
@@ -101,7 +103,7 @@ impl Analyzer {
           return Err(Error::SemanticError(format!("'return' should return type {}", btype)));
         }
 
-        let res = self.expr_check(expr_.as_ref().unwrap());
+        let res = self.expr_check(expr_.as_ref().unwrap(), *btype);
         if res.is_err() {
           return Err(res.err().unwrap());
         }

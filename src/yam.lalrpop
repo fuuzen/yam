@@ -439,7 +439,7 @@ FuncDef: Rc<FuncDef> = {
 }
 
 FuncCall: FuncCall = {
-  <ident: Ident> "(" <func_rparams: VecComma<Expr>> ")" => FuncCall::new(ident, func_rparams),
+  <ident: Ident> "(" <func_rparams: VecComma<AsgnRVal>> ")" => FuncCall::new(ident, func_rparams),
 }
 
 /******************************* func 部分 结束 ******************************/

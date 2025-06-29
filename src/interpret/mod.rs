@@ -30,12 +30,17 @@ impl Interpreter {
     let len = func_def.func_fparams.len();
     for i in 0..len {
       let param = &func_def.func_fparams[i];
-      let expr = &func_call.func_rparams[i];
-      let res = self.calc_expr(expr);
-      if res.is_err() {
-        return Err(res.err().unwrap());
+      let asgn_rval = &func_call.func_rparams[i];
+      match asgn_rval {
+        AsgnRVal::Expr( expr ) => {
+          let res = self.calc_expr(expr);
+          if res.is_err() {
+            return Err(res.err().unwrap());
+          }
+          param.set_value(Value::Int(res.unwrap()));
+        },
+        _ => unimplemented!()
       }
-      param.set_value(Value::Int(res.unwrap()));
     }
     
     let res = self.interpret_block(func_def.block.clone());

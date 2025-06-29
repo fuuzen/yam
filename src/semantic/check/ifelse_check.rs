@@ -1,11 +1,11 @@
-use crate::{ast::stmt::IfElse, error::Error};
+use crate::{ast::{stmt::IfElse, val::BType}, error::Error};
 
 use super::Analyzer;
 
 impl Analyzer {
   /// If ... [Else ...] 语句的检查
   pub fn ifelse_check(&mut self, ifelse: &IfElse) -> Result<(), Error> {
-    let mut res = self.expr_check(&ifelse.cond);
+    let mut res = self.expr_check(&ifelse.cond, BType::Bool);
     if res.is_err() {
       return Err(res.err().unwrap());
     }

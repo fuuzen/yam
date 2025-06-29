@@ -10,7 +10,7 @@ pub const PHRASE_DEFAULT: PhraseValue = PhraseValue{attr: None, content: vec![]}
 pub const TRACK_DEFAULT: TrackValue = TrackValue{content: vec![]};
 
 /// 所有的 Base Type 的定义
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum BType {
   Int,
   Bool,

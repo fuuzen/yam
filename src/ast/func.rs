@@ -1,10 +1,10 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::ast::val::Value;
+use crate::ast::{stmt::AsgnRVal, val::Value};
 
-use super::{block::Block, val::{BType, RVal}, expr::Expr};
+use super::{block::Block, val::{BType, RVal}};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum FuncType {
   BType(BType),
   Void,
@@ -20,7 +20,7 @@ pub struct FuncFParam {
 impl FuncFParam {
   /// 初始化为类型 BType 默认值
   pub fn new(btype: BType, ident: String) -> Self {
-      let rval = RVal::new_with_btype(btype.clone());
+    let rval = RVal::new_with_btype(btype.clone());
     FuncFParam {
       ident,
       rval: Rc::new(rval),
@@ -45,14 +45,14 @@ pub struct FuncDef {
 #[derive(Debug)]
 pub struct FuncCall {
   pub ident: String,
-  pub func_rparams: Vec<Expr>,
+  pub func_rparams: Vec<AsgnRVal>,
 
   /// 语义检查阶段绑定的函数定义
   pub func_def: Rc<RefCell<Option<Rc<FuncDef>>>>,
 }
 
 impl FuncCall {
-  pub fn new(ident: String, func_rparams: Vec<Expr>) -> Self {
+  pub fn new(ident: String, func_rparams: Vec<AsgnRVal>) -> Self {
     FuncCall {
       ident,
       func_rparams,

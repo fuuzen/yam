@@ -85,4 +85,3 @@ pub struct LOrExpr {
 }
 
 pub type Expr = LOrExpr;
-pub type ExprRVal = Expr;

@@ -7,6 +7,7 @@ pub mod lval_check;
 pub mod while_check;
 pub mod ifelse_check;
 pub mod block_check;
+pub mod asgn_rval_check;
 
 use crate::{ast::comp_unit::CompUnit, error::Error};
 

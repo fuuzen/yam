@@ -1,4 +1,4 @@
-use crate::ast::stmt::{AsgnRVal, ConstDecl, ConstDef, VarDecl, VarDef};
+use crate::ast::stmt::{ConstDecl, ConstDef, VarDecl, VarDef};
 use crate::error::Error;
 
 use super::Analyzer;
@@ -19,14 +19,9 @@ impl Analyzer {
         return Err(res.err().unwrap());
       }
 
-      match &asgn_rval {
-        AsgnRVal::Expr( expr ) => {
-          res = self.expr_check(expr);
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          }
-        },
-        _ => unimplemented!()  // TODO
+      res = self.asgn_rval_check(&asgn_rval, const_decl.btype);
+      if res.is_err() {
+        return Err(res.err().unwrap());
       }
     }
     Ok(())
@@ -48,14 +43,9 @@ impl Analyzer {
       }
 
       if asgn_rval_.is_some() {
-        match asgn_rval_.as_ref().unwrap() {
-          AsgnRVal::Expr( expr ) => {
-            res = self.expr_check(expr);
-            if res.is_err() {
-              return Err(res.err().unwrap());
-            }
-          },
-          _ => unimplemented!()  // TODO
+        res = self.asgn_rval_check(asgn_rval_.as_ref().unwrap(), var_decl.btype);
+        if res.is_err() {
+          return Err(res.err().unwrap());
         }
       }
     }
