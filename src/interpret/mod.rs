@@ -1,14 +1,12 @@
 pub mod calc; /// 表达式计算
 pub mod ctr;  /// 控制流
 pub mod asgn_rval;  /// 翻译右值表达式
-
-// use midi_file::MidiFile;
-// use midi_file::core::{Channel, Clocks, DurationName, NoteNumber, Velocity};
-// use midi_file::file::{QuartersPerMinute, Track};
+pub mod score;  /// 翻译 Score 
 
 use std:: rc::Rc;
 
 use ctr::{Ctr, RetVal};
+use midi_file::MidiFile;
 
 use crate::ast::expr::Expr;
 use crate::ast::stmt::{Asgn, ConstDecl, IfElse, Stmt, VarDecl, While};
@@ -227,7 +225,7 @@ impl Interpreter {
     Ok(Ctr::None)
   }
 
-  pub fn interpret(&mut self, comp_unit: &CompUnit) -> Result<RetVal, Error> {
+  pub fn interpret(&mut self, comp_unit: &CompUnit) -> Result<MidiFile, Error> {
     for stmt in &comp_unit.block.stmts {
       match stmt {
         Stmt::VarDecl( var_decl ) => {
@@ -245,12 +243,6 @@ impl Interpreter {
         _ => (),
       }
     }
-    let block = comp_unit.score.block.clone();
-    let res = self.interpret_block(block);
-    if res.is_err() {
-      return Err(res.err().unwrap());
-    }
-
-    Ok(RetVal::Void)
+    self.interpret_score(&comp_unit.score)
   }
 }

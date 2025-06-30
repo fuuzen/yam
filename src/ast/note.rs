@@ -10,7 +10,7 @@ pub struct Note {
 }
 
 /// 表达式都被计算好后的 Note 值
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct NoteValue {
   pub notes: Vec<i32>,
   pub len: Option<i32>,

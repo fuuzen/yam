@@ -9,5 +9,6 @@ edition = "2024"
 lalrpop = "0.22.1"
 
 [dependencies]
+clap = { version = "4.5.40", features = ["derive"] }
 lalrpop-util = { version = "0.22.1", features = ["lexer"] }
 midi_file = "0.0.6"

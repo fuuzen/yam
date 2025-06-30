@@ -1,18 +1,26 @@
-use std::env::args;
 use std::fs::read_to_string;
 use std::io::Result;
 use yam::{SyntacticAnalyzer, SemanticAnalyzer, Interpreter};
-use std::fs::File;
-use std::io::Write;
+
+use clap::Parser;
+
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+  /// 输入文件路径
+  #[arg(short = 'i', long = "input", required = true)]
+  input: String,
+
+  /// 输出文件路径
+  #[arg(short = 'o', long = "output", required = true)]
+  output: String,
+}
 
 fn main() -> Result<()> {
-  // 解析命令行参数
-  let mut args = args();
-  args.next();
-  // let mode = args.next().unwrap();
-  let input = args.next().unwrap();
-  args.next();
-  let output = args.next().unwrap();
+  let args = Args::parse();
+  let input = args.input;
+  let output = args.output;
 
   // 读取输入文件
   let input = read_to_string(input)?;
@@ -28,10 +36,6 @@ fn main() -> Result<()> {
   }
   println!("Lexical and syntactic parsed successfully");
   let comp_unit = parse_res.as_ref().unwrap();
-
-  let content = format!("{:#?}", comp_unit);
-  let mut file = File::create(output)?;
-  file.write_all(content.as_bytes())?;
 
   // 创建语义分析器
   let mut semantic_analyzer = SemanticAnalyzer::new();
@@ -52,6 +56,13 @@ fn main() -> Result<()> {
     return Ok(());
   }
   println!("Interpret successflly");
+
+  // 保存 midi 文件
+  let res = res.unwrap().save(output);
+  if res.is_err() {
+    println!("{}", res.err().unwrap());
+    return Ok(());
+  }
 
   Ok(())
 }
