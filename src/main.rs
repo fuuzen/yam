@@ -44,14 +44,14 @@ fn main() -> Result<()> {
   }
   println!("Semantic check successflly");
 
-  // 解释执行
+  // 执行翻译
   let mut interpreter = Interpreter::new();
   let res = interpreter.interpret(comp_unit);
   if res.is_err() {
     println!("{}", res.err().unwrap());
     return Ok(());
   }
-  println!("Interpret successflly, main return value: {:?}", res.unwrap());
+  println!("Interpret successflly");
 
   Ok(())
 }

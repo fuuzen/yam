@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use crate::ast::block::Block;
 use crate::ast::func::{FuncDef, FuncFParam};
+use crate::ast::score::Score;
 use crate::error::Error;
 
 use super::Analyzer;
@@ -153,6 +154,61 @@ impl Analyzer {
     let stmts = &block.stmts;
     for stmt in stmts {
       let res = self.stmt_check(&stmt);
+      if res.is_err() {
+        return Err(res.err().unwrap());
+      }
+    }
+    
+    // 恢复当前 Block Id
+    res = self.set_current_block(cur_block_id);
+    if res.is_err() {
+      return Err(res.err().unwrap());
+    }
+    Ok(())
+  }
+  
+  /// 要做的事情和 func_block 差不多,只是多了 channel_stmt 的 check
+  pub fn score_check(&mut self, score: &Score) -> Result<(), Error> {
+    // 函数定义 Block
+    let block = score.block.clone();
+
+    // 设置函数的父级 Block 为全局 Block，使其能访问全局变量和全局常量
+    block.set_parent_id(self.get_global_block());
+
+    // 保存当前 Block Id，以便在函数定义 Block 的检查结束后恢复
+    let cur_block_id = self.current_block_id;
+
+    // 在 Blocks 表中添加当前 Block
+    let mut res = self.add_block(block.clone());
+    if res.is_err() {
+      return Err(res.err().unwrap());
+    }
+
+    // 在 Scopes 表中添加当前 Block
+    res = self.add_scope(block.get_id());
+    if res.is_err() {
+      return Err(res.err().unwrap());
+    }
+
+    // 进入 Score Block，必须先添加到 Blocks 和 Scopes 表再进入该 Block
+    res = self.set_current_block(block.get_id());
+    if res.is_err() {
+      return Err(res.err().unwrap());
+    }
+
+    // 遍历并检查所有 stmt
+    let stmts = &block.stmts;
+    for stmt in stmts {
+      let res = self.stmt_check(&stmt);
+      if res.is_err() {
+        return Err(res.err().unwrap());
+      }
+    }
+
+    // 遍历检查所有 channel stmt
+    let stmts = &score.channel_stmts;
+    for stmt in stmts {
+      let res = self.channel_stmt_check(&stmt);
       if res.is_err() {
         return Err(res.err().unwrap());
       }

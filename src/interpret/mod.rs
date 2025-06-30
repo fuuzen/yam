@@ -228,16 +228,8 @@ impl Interpreter {
   }
 
   pub fn interpret(&mut self, comp_unit: &CompUnit) -> Result<RetVal, Error> {
-    let mut block_: Option<Rc<Block>> = None;
     for stmt in &comp_unit.block.stmts {
       match stmt {
-        Stmt::FuncDef( func_def ) => {
-          let func_name = func_def.ident.clone();
-          if func_name == "main" {
-            block_ = Some(func_def.block.clone());
-            break;
-          }
-        },
         Stmt::VarDecl( var_decl ) => {
           let res = self.interpret_var_decl(var_decl);
           if res.is_err() {
@@ -253,20 +245,12 @@ impl Interpreter {
         _ => (),
       }
     }
-
-    if block_.is_none() {
-      return Err(Error::RuntimeError("main function not found".to_string()));
-    }
-    let block = block_.clone().unwrap();
-
+    let block = comp_unit.score.block.clone();
     let res = self.interpret_block(block);
     if res.is_err() {
       return Err(res.err().unwrap());
     }
 
-    match res.unwrap() {
-      Ctr::Return( v ) => Ok(v),
-      _ => Ok(RetVal::Void),
-    }
+    Ok(RetVal::Void)
   }
 }
