@@ -11,13 +11,14 @@ impl Interpreter {
       if res.is_err() {
         return Err(res.err().unwrap());
       }
-      let v = match res.unwrap() {
-        RetVal::Value(Value::Int( int )) => int,
+      let mut v = match res.unwrap() {
+        RetVal::Value(Value::Int( int )) => vec![int],
+        RetVal::Value(Value::Note( note )) => note.notes,
         val => return Err(Error::RuntimeError(format!(
           "expect i32, but found {val}",
         )))
       };
-      notes.push(v);
+      notes.append(&mut v);
     }
     
     let len  = match note.len.is_some() {

@@ -18,8 +18,8 @@ LAndExpr    ::= EqExpr | LAndExpr "&&" EqExpr;
 LOrExpr     ::= LAndExpr | LOrExpr "||" LAndExpr;
 Expr        ::= LOrExpr
 
-Note        ::= Expr ["=" Expr] | Expr "'" NoteExpr;
-NoteRVal    ::= Note | LVal | FuncCall
+Note        ::= Expr "'" Expr ["=" Expr] | Expr "'" NoteExpr;
+NoteRVal    ::= Note | Expr;
 MeasureAttr ::= "<" Expr ":" Expr [ "," Expr  ] ">";
 MeasureUnit ::= "." | "<" | ">" | NoteRVal;
 Measure     ::= [ MeasureAttr ] "|" {MeasureUnit} "|";

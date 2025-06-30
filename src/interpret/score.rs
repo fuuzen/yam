@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{ast::{measure::{MeasureAttrValue, MeasureUnitValue}, note::NoteValue, score::{ChannelStmt, Score, SetChannelInstrument, SetChannelTrack}, track::TrackRVal, val::Value}, error::Error, interpret::ctr::RetVal};
+use crate::{ast::{measure::{MeasureAttrValue, MeasureUnitValue}, score::{ChannelStmt, Score, SetChannelInstrument, SetChannelTrack}, track::TrackRVal, val::Value}, error::Error, interpret::ctr::RetVal};
 
 use midi_file::{core::GeneralMidi, MidiFile};
 use midi_file::core::{Channel, Clocks, DurationName, NoteNumber, Velocity};
@@ -210,12 +210,13 @@ impl Interpreter {
                 apply_time_signature(&attr, &mut track)?;
               }
 
-              let mut notes_to_off: Vec<(u32, NoteValue)> = vec![];
+              let mut notes_to_off: Vec<(u32, u32)> = vec![];
               let mut elapsed_ticks = 0;
               let mut tick_step = MEASURE_TICKS / attr.bottom_num as u32;
+              let mut delta = 0;
 
               // 模拟midi经过了tick_step个tick,在此期间可能有标记了延长的音符需要关闭
-              let elapse = |track: &mut MidiTrack, tick_step: u32, notes_to_off: &mut Vec<(u32, NoteValue)>, elapsed_ticks: &mut u32| -> Result<(), Error> {
+              let elapse = |track: &mut MidiTrack, tick_step: u32, notes_to_off: &mut Vec<(u32, u32)>, elapsed_ticks: &mut u32, delta: &mut u32| -> Result<(), Error> {
                 notes_to_off.sort();  // 升序
                 let term = *elapsed_ticks + tick_step;
                 let mut count = 0;  // 记录需要删掉多少个 note_to_off 记录
@@ -225,18 +226,17 @@ impl Interpreter {
                     break;
                   }
                   let delta = *target_elapsed_ticks - *elapsed_ticks;
-                  for note in &note.notes {
-                    track.push_note_off(
-                      delta,
-                      channel,
-                      NoteNumber::new(*note as u8),
-                      DEFAULT_VELOCITY
-                    ).map_err(|e| Error::RuntimeError(e.to_string()))?;
-                  }
+                  track.push_note_off(
+                    delta,
+                    channel,
+                    NoteNumber::new(*note as u8),
+                    DEFAULT_VELOCITY
+                  ).map_err(|e| Error::RuntimeError(e.to_string()))?;
                   count += 1;
                   *elapsed_ticks += delta;
                 }
                 notes_to_off.drain(0..count);
+                *delta = term - *elapsed_ticks;
                 *elapsed_ticks = term;
                 Ok(())
               };
@@ -246,7 +246,7 @@ impl Interpreter {
                   MeasureUnitValue::TimeDilation => tick_step /= 2,
                   MeasureUnitValue::TimeCompression => tick_step *= 2,
                   MeasureUnitValue::Rest => {
-                    elapse(&mut track, tick_step, &mut notes_to_off, &mut elapsed_ticks)?;
+                    elapse(&mut track, tick_step, &mut notes_to_off, &mut elapsed_ticks, &mut delta)?;
                   },
                   MeasureUnitValue::NoteValue( note ) => {
                     let mut note_ticks = tick_step;
@@ -257,16 +257,20 @@ impl Interpreter {
 
                     for note in &note.notes {
                       track.push_note_on(
-                        0,
+                        delta,
                         channel,
                         NoteNumber::new(*note as u8),
                         DEFAULT_VELOCITY
                       ).map_err(|e| Error::RuntimeError(e.to_string()))?;
+                      
+                      notes_to_off.push((target_elapsed_ticks, *note as u32));
+
+                      if delta > 0 {
+                        delta = 0;
+                      }
                     }
 
-                    notes_to_off.push((target_elapsed_ticks, note.clone()));
-
-                    elapse(&mut track, tick_step, &mut notes_to_off, &mut elapsed_ticks)?;
+                    elapse(&mut track, tick_step, &mut notes_to_off, &mut elapsed_ticks, &mut delta)?;
                   }
                 }
               }
