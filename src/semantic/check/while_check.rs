@@ -33,7 +33,7 @@ impl Analyzer {
 
   /// 以 Stmt::While 为单位进行语法检查
   pub fn while_check(&mut self, while_: &While) -> Result<(), Error> {
-    let mut res = self.expr_check(&while_.cond, BType::Bool);
+    let mut res = self.expr_check(&while_.cond, Some(BType::Bool));
     if res.is_err() {
       return Err(res.err().unwrap());
     }

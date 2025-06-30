@@ -25,10 +25,10 @@ impl Analyzer {
   /// int 和 bool 类型运算按照 C 语言标准相互兼容。
   /// 其他目標類型必須滿足表達式只有一個 unary_expr 且沒有任何運算
   /// int/bool 可以向 note 轉化, 剩餘類型必須嚴格匹配
-  pub fn expr_check(&mut self, lor_expr: &LOrExpr, btype: BType) -> Result<(), Error> {
+  pub fn expr_check(&mut self, lor_expr: &LOrExpr, btype_: Option<BType>) -> Result<(), Error> {
 
     let flag1 =  // 表示需要嚴格匹配
-      btype != BType::Int && btype != BType::Bool && btype != BType::Note;
+      btype_.is_some_and(|t|  t != BType::Int && t != BType::Bool && t != BType::Note);
     
     let mut flag2 =  // 表示表達式滿足嚴格匹配(只有一個 unary_expr 且沒有任何運算)
       lor_expr.land_exps.len() == 1;
@@ -49,23 +49,30 @@ impl Analyzer {
               flag2 &= mul_expr.unary_exps.len() == 1;
 
               if flag1 && !flag2 {
+                let btype = btype_.unwrap();
                 return Err(Error::SemanticError(format!(
-                  "expression must have only one unary_expr and no operation"
+                  "calculating {btype} is not supported yet"
                 )));
               }
 
               for unary_expr in &mul_expr.unary_exps {
-                let expect_type = btype.clone();
+                let expect_type_ = btype_.clone();
                 
                 match &unary_expr.primary_exp {
                   PrimaryExpr::LVal( lval ) => {
-                    let res = self.lval_check(lval);
+                    let mut res = self.lval_check(lval);
                     if res.is_err() {
                       return res;
                     }
 
                     let ret_type = lval.rval.borrow().clone().unwrap().get_btype();
-                    let res = type_check(ret_type, expect_type);
+                    res = match flag2 && expect_type_.is_some() {
+                      true => Ok(()),  // 表达式只有这一个 unary_expr 且没有任何运算,不需要检查类型
+                      false => type_check(
+                        ret_type,
+                        expect_type_.unwrap()
+                      ),
+                    };
                     if res.is_err() {
                       return res;
                     }
@@ -76,11 +83,30 @@ impl Analyzer {
                       Err(e) => return Err(e),
                       Ok(func_type) => {
                         match func_type {
-                          FuncType::Void =>  return Err(Error::SemanticError(
-                            "function return void in expression".to_string()
-                          )),
+                          FuncType::Void => match expect_type_.is_some() {
+                            true => {
+                              let expect_type = expect_type_.unwrap();
+                              return Err(Error::SemanticError(format!(
+                                "expect {expect_type}, but found void"
+                              )))
+                            },
+                            false => {}  // 非赋值的地方调用void函数
+                          }
                           FuncType::BType( ret_type) => {
-                            let res = type_check(ret_type, expect_type);
+                            let res = match expect_type_.is_some() {
+                              false => match 
+                                ret_type != BType::Int && ret_type != BType::Bool && !flag2  // 不允许int/bool之外的类型运算
+                              {
+                                true => Err(Error::SemanticError(format!(
+                                  "calculating {ret_type} is not supported yet"
+                                ))),
+                                false => Ok(()),
+                              },
+                              true => type_check(
+                                ret_type,
+                                expect_type_.unwrap()
+                              ),
+                            };
                             if res.is_err() {
                               return res;
                             }
@@ -90,51 +116,13 @@ impl Analyzer {
                     }
                   },
                   PrimaryExpr::Expr( expr ) => {
-                    let res = self.expr_check(expr, expect_type.clone());
-                    if res.is_err() {
-                      return res;
-                    }
-
-                    let ret_type = BType::Int; // 相當於 int/bool
-                    let res = type_check(ret_type, expect_type);
-                    if res.is_err() {
-                      return res;
-                    }
-                  },
-                  PrimaryExpr::Number( _ ) => {}
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    Ok(())
-  }
-
-  /// 检查表达式是否合法，但不做类型检查
-  pub fn expr_check_untyped(&mut self, lor_expr: &LOrExpr) -> Result<(), Error> {
-    for land_expr in &lor_expr.land_exps {
-      for eq_expr in &land_expr.eq_exps {
-        for rel_expr in &eq_expr.rel_exps {
-          for add_expr in &rel_expr.add_exps {
-            for mul_expr in &add_expr.mul_exps {
-              for unary_expr in &mul_expr.unary_exps {
-                match &unary_expr.primary_exp {
-                  PrimaryExpr::LVal( lval ) => {
-                    let res = self.lval_check(lval);
-                    if res.is_err() {
-                      return res;
-                    }
-                  },
-                  PrimaryExpr::FuncCall( func_call ) => {
-                    let res = self.func_call_check(func_call);
-                    if res.is_err() {
-                      return Err(res.unwrap_err());
-                    }
-                  },
-                  PrimaryExpr::Expr( expr ) => {
-                    let res = self.expr_check_untyped(expr);
+                    let res = match expect_type_.is_some() {
+                      false => self.expr_check(expr, None),
+                      true => match flag2 {
+                        true => self.expr_check(expr, expect_type_),  // 没有任何运算,相当于冗余括号
+                        false => self.expr_check(expr, Some(BType::Int)),  // 有运算,必须为int/bool
+                      },
+                    };
                     if res.is_err() {
                       return res;
                     }

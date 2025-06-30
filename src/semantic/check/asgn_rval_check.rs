@@ -13,13 +13,13 @@ use super::Analyzer;
 impl Analyzer {
   pub fn note_check(&mut self, note: &Note) -> Result<(), Error> {
     if note.len.is_some() {
-      let res = self.expr_check(note.len.as_ref().unwrap(), BType::Int);
+      let res = self.expr_check(note.len.as_ref().unwrap(), Some(BType::Int));
       if res.is_err() {
         return Err(res.err().unwrap());
       }
     }
     for expr in &note.notes {
-      let res = self.expr_check(expr, BType::Int);
+      let res = self.expr_check(expr, Some(BType::Int));
       if res.is_err() {
         return Err(res.err().unwrap());
       }
@@ -28,16 +28,16 @@ impl Analyzer {
   }
   
   pub fn measure_attr_check(&mut self, attr: &MeasureAttr) -> Result<(), Error> {
-    let mut res = self.expr_check(&attr.top_num, BType::Int);
+    let mut res = self.expr_check(&attr.top_num, Some(BType::Int));
     if res.is_err() {
       return Err(res.err().unwrap());
     }
-    res = self.expr_check(&attr.bottom_num, BType::Int);
+    res = self.expr_check(&attr.bottom_num, Some(BType::Int));
     if res.is_err() {
       return Err(res.err().unwrap());
     }
     if attr.tempo.is_some() {
-      res = self.expr_check(attr.tempo.as_ref().unwrap(), BType::Int);
+      res = self.expr_check(attr.tempo.as_ref().unwrap(), Some(BType::Int));
       if res.is_err() {
         return Err(res.err().unwrap());
       }
@@ -157,7 +157,7 @@ impl Analyzer {
   pub fn asgn_rval_check(&mut self, asgn_rval: &AsgnRVal, expect_type: BType) -> Result<(), Error> {
     match asgn_rval {
       AsgnRVal::Expr( expr ) => {
-        let res = self.expr_check(expr, expect_type);
+        let res = self.expr_check(expr, Some(expect_type));
         if res.is_err() {
           return Err(res.err().unwrap());
         }

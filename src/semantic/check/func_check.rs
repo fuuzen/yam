@@ -103,7 +103,7 @@ impl Analyzer {
           return Err(Error::SemanticError(format!("'return' should return type {}", btype)));
         }
 
-        let res = self.expr_check(expr_.as_ref().unwrap(), *btype);
+        let res = self.expr_check(expr_.as_ref().unwrap(), Some(*btype));
         if res.is_err() {
           return Err(res.err().unwrap());
         }

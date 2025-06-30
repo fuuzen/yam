@@ -18,7 +18,7 @@ impl Analyzer {
       Stmt::FuncDef( func_def ) => self.func_def_check(func_def.clone()),
       Stmt::IfElse( ifelse ) => self.ifelse_check(ifelse),
       Stmt::Expr( expr_ ) => match expr_.is_some() {
-        true => self.expr_check_untyped(expr_.as_ref().unwrap()),
+        true => self.expr_check(expr_.as_ref().unwrap(), None),
         false => Ok(()),
       },
     }
