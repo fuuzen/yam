@@ -17,7 +17,7 @@ pub enum PhraseRVal {
 }
 
 /// 表达式都被计算好后的 Phrase 值
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PhraseValue {
   pub attr: Option<MeasureAttrValue>,
   pub content: Vec<MeasureValue>,

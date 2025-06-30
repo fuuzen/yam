@@ -16,7 +16,7 @@ pub enum TrackRVal {
 }
 
 /// 表达式都被计算好后的 Track 值
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TrackValue {
   pub content: Vec<PhraseValue>,
 }

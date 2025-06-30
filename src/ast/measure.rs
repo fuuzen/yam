@@ -47,7 +47,7 @@ pub enum MeasureRVal {
 }
 
 /// MeasureAttr 的 Value 版本
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MeasureAttrValue {
   /// top number or time signature
   pub top_num: i32,
@@ -60,7 +60,7 @@ pub struct MeasureAttrValue {
 }
 
 /// MeasureUnit 的 Value 版本
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MeasureUnitValue {
   /// '<' 时间变慢一倍,例如原来是四分音符将变为八分音符
   TimeDilation,
@@ -76,7 +76,7 @@ pub enum MeasureUnitValue {
 }
 
 /// 表达式都被计算好后的 Measure 值
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MeasureValue {
   pub attr: Option<MeasureAttrValue>,
   pub content: Vec<MeasureUnitValue>,

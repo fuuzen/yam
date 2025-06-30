@@ -1,5 +1,6 @@
 pub mod calc; /// 表达式计算
 pub mod ctr;  /// 控制流
+pub mod asgn_rval;  /// 翻译右值表达式
 
 // use midi_file::MidiFile;
 // use midi_file::core::{Channel, Clocks, DurationName, NoteNumber, Velocity};
@@ -10,7 +11,7 @@ use std:: rc::Rc;
 use ctr::{Ctr, RetVal};
 
 use crate::ast::expr::Expr;
-use crate::ast::stmt::{Asgn, AsgnRVal, ConstDecl, IfElse, Stmt, VarDecl, While};
+use crate::ast::stmt::{Asgn, ConstDecl, IfElse, Stmt, VarDecl, While};
 use crate::ast::val::Value;
 use crate::error::Error;
 
@@ -31,15 +32,20 @@ impl Interpreter {
     for i in 0..len {
       let param = &func_def.func_fparams[i];
       let asgn_rval = &func_call.func_rparams[i];
-      match asgn_rval {
-        AsgnRVal::Expr( expr ) => {
-          let res = self.calc_expr(expr);
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          }
-          param.set_value(Value::Int(res.unwrap()));
-        },
-        _ => unimplemented!()
+      let res = self.interpret_asgn_rval(asgn_rval);
+      if res.is_err() {
+        return Err(res.err().unwrap());
+      }
+      match res.unwrap() {
+        RetVal::Value( v ) => param.set_value(v),
+        val => {
+          let ident = &func_def.func_fparams[i].ident;
+          let expect_type = param.rval.get_btype();
+          let func_name = &func_def.ident;
+          return Err(Error::RuntimeError(format!(
+            "can not use {val} as param {ident}({expect_type}) when calling '{func_name}'"
+          )))
+        }
       }
     }
     
@@ -57,18 +63,19 @@ impl Interpreter {
   pub fn interpret_const_decl(&mut self, const_decl: &ConstDecl) -> Result<Ctr, Error> {
     let len = const_decl.const_defs.len();
     for i in 0..len {
-      let const_def = &const_decl.const_defs[i];
-      match &const_def.rval {
-        AsgnRVal::Expr( expr) => {
-          let res = self.calc_expr(expr);
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          }
-
-          let rval = const_decl.rvals[i].clone();
-          rval.set_value(Value::Int(res.unwrap()));
+      let res = self.interpret_asgn_rval(&const_decl.const_defs[i].rval);
+      if res.is_err() {
+        return Err(res.err().unwrap());
+      }
+      match res.unwrap() {
+        RetVal::Value( v ) => const_decl.rvals[i].set_value(v),
+        val => {
+          let ident = &const_decl.const_defs[i].ident;
+          let expect_type = const_decl.rvals[i].get_btype();
+          return Err(Error::RuntimeError(format!(
+            "can not asign {val} to {ident}({expect_type})"
+          )))
         }
-        _ => unimplemented!()  // TODO
       }
     }
     Ok(Ctr::None)
@@ -83,35 +90,38 @@ impl Interpreter {
         continue;
       }
 
-      match asgn_rval_.as_ref().unwrap() {
-        AsgnRVal::Expr( expr) => {
-          let res = self.calc_expr(expr);
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          }
-
-          let rval = var_decl.rvals[i].clone();
-          rval.set_value(Value::Int(res.unwrap()));
+      let res = self.interpret_asgn_rval(asgn_rval_.as_ref().unwrap());
+      if res.is_err() {
+        return Err(res.err().unwrap());
+      }
+      match res.unwrap() {
+        RetVal::Value( v ) => var_decl.rvals[i].set_value(v),
+        val => {
+          let ident = &var_decl.var_defs[i].ident;
+          let expect_type = var_decl.rvals[i].get_btype();
+          return Err(Error::RuntimeError(format!(
+            "can not asign {val} to {ident}({expect_type})"
+          )))
         }
-        _ => unimplemented!()  // TODO
       }
     }
     Ok(Ctr::None)
   }
 
   pub fn interpret_asgn(&mut self, asgn: &Asgn) -> Result<Ctr, Error> {
-    
-    match &asgn.rval {
-      AsgnRVal::Expr( expr) => {
-        let res = self.calc_expr(expr);
-        if res.is_err() {
-          return Err(res.err().unwrap());
-        }
-
-        let lval = asgn.lval.clone();
-        lval.set_value(Value::Int(res.unwrap()));
+    let res = self.interpret_asgn_rval(&asgn.rval);
+    if res.is_err() {
+      return Err(res.err().unwrap());
+    }
+    match res.unwrap() {
+      RetVal::Value( v ) => asgn.lval.set_value(v),
+      val => {
+        let ident = asgn.lval.clone().ident;
+        let expect_type = asgn.lval.rval.borrow().as_ref().unwrap().get_btype();
+        return Err(Error::RuntimeError(format!(
+          "can not asign {val} to {ident}({expect_type})"
+        )))
       }
-      _ => unimplemented!()  // TODO
     }
     Ok(Ctr::None)
   }
@@ -123,11 +133,14 @@ impl Interpreter {
     }
 
     match res.clone().unwrap() {
-      0 => match &ifelse.else_ {
+      RetVal::Value(Value::Int(0)) => match &ifelse.else_ {
         Some( else_ ) => self.interpret_stmt(else_),
         None => Ok(Ctr::None),
       },
-      _ => self.interpret_stmt(&ifelse.if_),
+      RetVal::Value(Value::Int(_)) => self.interpret_stmt(&ifelse.if_),
+      val => Err(Error::RuntimeError(format!(
+        "expect int/bool for condition, but found {val}"
+      )))
     }
   }
 
@@ -137,7 +150,11 @@ impl Interpreter {
       return Err(res_cond.err().unwrap());
     }
 
-    while res_cond.clone().unwrap() != 0 {
+    while res_cond.clone().is_ok_and( |v| match v {
+      RetVal::Value(Value::Int(0)) => false,
+      RetVal::Value(Value::Int(_)) => true,
+      _ => false,
+    }){
       let res = self.interpret_stmt(&while_.body);
       if res.is_err() {
         return Err(res.err().unwrap());
@@ -154,7 +171,13 @@ impl Interpreter {
         return Err(res.err().unwrap());
       }
     }
-    Ok(Ctr::None)
+    
+    match res_cond.clone().unwrap() {
+      RetVal::Value(Value::Int(_)) => Ok(Ctr::None),
+      val => Err(Error::RuntimeError(format!(
+        "expect int/bool for condition, but found {val}"
+      )))
+    }
   }
 
   pub fn interpret_return(&mut self, expr_: &Option<Expr>) -> Result<Ctr, Error> {
@@ -163,7 +186,7 @@ impl Interpreter {
       if res.is_err() {
         return Err(res.err().unwrap());
       }
-      Ok(Ctr::Return( RetVal::Int(res.unwrap()) ))
+      Ok(Ctr::Return( res.unwrap() ))
     } else {
       Ok(Ctr::Return( RetVal::Void ))
     }

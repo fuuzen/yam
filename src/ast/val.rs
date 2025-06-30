@@ -34,13 +34,26 @@ impl fmt::Display for BType {
 }
 
 /// 所有的 Value 的定义
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
+  /// 也用作 bool
   Int(i32),
   Note(NoteValue),
   Measure(MeasureValue),
   Phrase(PhraseValue),
   Track(TrackValue),
+}
+
+impl fmt::Display for Value {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
+      Value::Int(_) => write!(f, "i32"),
+      Value::Note(_) => write!(f, "note"),
+      Value::Measure(_) => write!(f, "measute"),
+      Value::Phrase(_) => write!(f, "phrase"),
+      Value::Track(_) => write!(f, "track"),
+    }
+  }
 }
 
 /// Left Value，左值
