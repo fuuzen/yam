@@ -1,5 +1,5 @@
 use crate::ast::func::FuncType;
-use crate::ast::score::{ChannelStmt, SetChannelInstrument, SetChannelTrack};
+use crate::ast::score::{ScoreStmt, SetChannelInstrument, SetChannelTrack, SetTimeSignature};
 use crate::ast::stmt::Stmt;
 use crate::ast::track::TrackRVal;
 use crate::ast::val::BType;
@@ -29,23 +29,20 @@ impl Analyzer {
   }
 
   /// 以 Channel Stmt 为单位进行语义检查
-  pub fn channel_stmt_check(&mut self, stmt: &ChannelStmt) -> Result<(), Error> {
+  pub fn channel_stmt_check(&mut self, stmt: &ScoreStmt) -> Result<(), Error> {
     match stmt {
-      ChannelStmt::SetChannelInstrument(SetChannelInstrument{channel, instrument}) => {
+      ScoreStmt::SetChannelInstrument(SetChannelInstrument{channel, instrument}) => {
         match self.expr_check(channel, Some(BType::Int)) {
           Ok(()) => self.expr_check(instrument, Some(BType::Int)),
           Err(e) => Err(e)
         }
       },
-      ChannelStmt::SetChannelTrack( SetChannelTrack{channel, track} ) => {
+      ScoreStmt::SetChannelTrack( SetChannelTrack{channel, track} ) => {
         match self.expr_check(channel, Some(BType::Int)) {
           Ok(()) => match track {
             TrackRVal::Track( track ) => self.track_check(track),
             TrackRVal::LVal( lval ) => {
-              let res = self.lval_check(lval);
-              if res.is_err() {
-                return Err(res.err().unwrap());
-              }
+              self.lval_check(lval)?;
 
               let ret_type = lval.rval.borrow().as_ref().unwrap().get_btype();
               match ret_type != BType::Track {
@@ -54,16 +51,12 @@ impl Analyzer {
               }
             },
             TrackRVal::FuncCall( func_call ) => {
-              let res = self.func_call_check(func_call);
-              if res.is_err() {
-                return Err(res.err().unwrap());
-              }
+              let ret_type = self.func_call_check(func_call)?;
 
-              let ret_type = res.as_ref().unwrap();
               match ret_type {
                 FuncType::Void => Err(Error::SemanticError(format!("expect track, but found void", ))),
                 FuncType::BType( ret_type ) => {
-                  match *ret_type != BType::Track {
+                  match ret_type != BType::Track {
                     true => Err(Error::SemanticError(format!("expect track, but found {ret_type}", ))),
                     false => Ok(())
                   }
@@ -74,6 +67,11 @@ impl Analyzer {
           Err(e) => Err(e)
         }
       },
+      ScoreStmt::SetTimeSignature( SetTimeSignature{top_num, bottom_num} ) => {
+        self.expr_check(top_num, Some(BType::Int))?;
+        self.expr_check(bottom_num, Some(BType::Int))
+      },
+      ScoreStmt::SetTempo( expr ) => self.expr_check(expr, Some(BType::Int))
     }
   }
 }

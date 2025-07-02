@@ -1,4 +1,4 @@
-use crate::{ast::{measure::{Measure, MeasureAttr, MeasureAttrValue, MeasureRVal, MeasureUnit, MeasureUnitValue, MeasureValue}, note::{Note, NoteValue}, phrase::{Phrase, PhraseRVal, PhraseValue}, stmt::AsgnRVal, track::{Track, TrackValue}, val::Value}, error::Error, interpret::ctr::RetVal};
+use crate::{ast::{measure::{Measure, MeasureRVal, MeasureUnit, MeasureUnitValue, MeasureValue}, note::{Note, NoteValue}, phrase::{Phrase, PhraseRVal, PhraseValue}, stmt::AsgnRVal, track::{Track, TrackValue}, val::Value}, error::Error, interpret::ctr::RetVal};
 
 use super:: Interpreter;
 
@@ -39,44 +39,6 @@ impl Interpreter {
     Ok(NoteValue{notes, len})
   }
 
-  /// 翻译 MeasureAttr 为 MeasureAttrValue
-  pub fn interpret_measure_attr(&mut self, attr: &MeasureAttr) -> Result<MeasureAttrValue, Error> {
-    let mut res = self.calc_expr(&attr.top_num);
-    if res.is_err() {
-      return Err(res.err().unwrap());
-    }
-    let top_num = match res.unwrap() {
-      RetVal::Value(Value::Int( int )) => int,
-      val => return Err(Error::RuntimeError(format!(
-        "expect i32, but found {val}",
-      )))
-    };
-
-    res = self.calc_expr(&attr.bottom_num);
-    if res.is_err() {
-      return Err(res.err().unwrap());
-    }
-    let bottom_num = match res.unwrap() {
-      RetVal::Value(Value::Int( int )) => int,
-      val => return Err(Error::RuntimeError(format!(
-        "expect i32, but found {val}",
-      )))
-    };
-
-    res = self.calc_expr(attr.tempo.as_ref().unwrap());
-    if res.is_err() {
-      return Err(res.err().unwrap());
-    }
-    let tempo = match res.unwrap() {
-      RetVal::Value(Value::Int( int )) => Some(int),
-      val => return Err(Error::RuntimeError(format!(
-        "expect i32, but found {val}",
-      )))
-    };
-
-    Ok(MeasureAttrValue{top_num, bottom_num, tempo})
-  }
-
   /// 翻译 Measure 为 MeasureValue
   pub fn interpret_measure(&mut self, measure: &Measure) -> Result<MeasureValue, Error> {
     let mut content = vec![];
@@ -95,18 +57,7 @@ impl Interpreter {
       };
       content.push(unit_val);
     }
-
-    let attr  = match &measure.attr {
-      Some( attr ) => {
-        let res = self.interpret_measure_attr(&attr);
-        if res.is_err() {
-          return Err(res.err().unwrap());
-        }
-        Some(res.unwrap())
-      },
-      None => None,
-    };
-    Ok(MeasureValue{content, attr})
+    Ok(MeasureValue{content})
   }
 
   /// 翻译 Phrase 为 PhraseValue
@@ -149,18 +100,7 @@ impl Interpreter {
       };
       content.push(measure_val);
     }
-
-    let attr  = match &phrase.attr {
-      Some( attr ) => {
-        let res = self.interpret_measure_attr(&attr);
-        if res.is_err() {
-          return Err(res.err().unwrap());
-        }
-        Some(res.unwrap())
-      },
-      None => None,
-    };
-    Ok(PhraseValue{content, attr})
+    Ok(PhraseValue{content})
   }
 
   /// 翻译 Phrase 为 PhraseValue

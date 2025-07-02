@@ -1,5 +1,5 @@
 use crate::ast::func::FuncType;
-use crate::ast::measure::{Measure, MeasureAttr, MeasureRVal, MeasureUnit};
+use crate::ast::measure::{Measure, MeasureRVal, MeasureUnit};
 use crate::ast::note::Note;
 use crate::ast::phrase::{Phrase, PhraseRVal};
 use crate::ast::stmt::AsgnRVal;
@@ -27,39 +27,10 @@ impl Analyzer {
     Ok(())
   }
   
-  pub fn measure_attr_check(&mut self, attr: &MeasureAttr) -> Result<(), Error> {
-    let mut res = self.expr_check(&attr.top_num, Some(BType::Int));
-    if res.is_err() {
-      return Err(res.err().unwrap());
-    }
-    res = self.expr_check(&attr.bottom_num, Some(BType::Int));
-    if res.is_err() {
-      return Err(res.err().unwrap());
-    }
-    if attr.tempo.is_some() {
-      res = self.expr_check(attr.tempo.as_ref().unwrap(), Some(BType::Int));
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
-    }
-    Ok(())
-  }
-  
   pub fn measure_check(&mut self, measure: &Measure) -> Result<(), Error> {
-    if measure.attr.is_some() {
-      let res = self.measure_attr_check(measure.attr.as_ref().unwrap());
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
-    }
     for expr in &measure.content {
       match expr {
-        MeasureUnit::Note( note ) => {
-          let res = self.note_check(note);
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          }
-        },
+        MeasureUnit::Note( note ) => self.note_check(note)?,
         _ => {}
       }
     }
@@ -67,25 +38,11 @@ impl Analyzer {
   }
   
   pub fn phrase_check(&mut self, phrase: &Phrase) -> Result<(), Error> {
-    if phrase.attr.is_some() {
-      let res = self.measure_attr_check(phrase.attr.as_ref().unwrap());
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
-    }
     for measure_rval in &phrase.content {
       match measure_rval {
-        MeasureRVal::Measure( measure ) => {
-          let res = self.measure_check(measure);
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          }
-        },
+        MeasureRVal::Measure( measure ) => self.measure_check(measure)?,
         MeasureRVal::LVal( lval ) => {
-          let res = self.lval_check(lval);
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          }
+          self.lval_check(lval)?;
 
           let ret_type = lval.rval.borrow().as_ref().unwrap().get_btype();
           if ret_type != BType::Measure {
@@ -93,16 +50,12 @@ impl Analyzer {
           }
         },
         MeasureRVal::FuncCall( func_call ) => {
-          let res = self.func_call_check(func_call);
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          }
+          let ret_type = self.func_call_check(func_call)?;
 
-          let ret_type = res.as_ref().unwrap();
           match ret_type {
             FuncType::Void => return Err(Error::SemanticError(format!("expect measure, but found void", ))),
             FuncType::BType( ret_type ) => {
-              if *ret_type != BType::Measure {
+              if ret_type != BType::Measure {
                 return Err(Error::SemanticError(format!("expect measure, but found {ret_type}", )));
               }
             }
@@ -116,17 +69,9 @@ impl Analyzer {
   pub fn track_check(&mut self, track: &Track) -> Result<(), Error> {
     for phrase_rval in &track.content {
       match phrase_rval {
-        PhraseRVal::Phrase( phrase ) => {
-          let res = self.phrase_check(phrase);
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          }
-        },
+        PhraseRVal::Phrase( phrase ) => self.phrase_check(phrase)?,
         PhraseRVal::LVal( lval ) => {
-          let res = self.lval_check(lval);
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          }
+          self.lval_check(lval)?;
 
           let ret_type = lval.rval.borrow().as_ref().unwrap().get_btype();
           if ret_type != BType::Phrase {
@@ -134,16 +79,12 @@ impl Analyzer {
           }
         },
         PhraseRVal::FuncCall( func_call ) => {
-          let res = self.func_call_check(func_call);
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          }
+          let ret_type = self.func_call_check(func_call)?;
 
-          let ret_type = res.as_ref().unwrap();
           match ret_type {
             FuncType::Void => return Err(Error::SemanticError(format!("expect phrase, but found void", ))),
             FuncType::BType( ret_type ) => {
-              if *ret_type != BType::Phrase {
+              if ret_type != BType::Phrase {
                 return Err(Error::SemanticError(format!("expect phrase, but found {ret_type}", )));
               }
             }
@@ -156,47 +97,30 @@ impl Analyzer {
 
   pub fn asgn_rval_check(&mut self, asgn_rval: &AsgnRVal, expect_type: BType) -> Result<(), Error> {
     match asgn_rval {
-      AsgnRVal::Expr( expr ) => {
-        let res = self.expr_check(expr, Some(expect_type));
-        if res.is_err() {
-          return Err(res.err().unwrap());
-        }
-      },
+      AsgnRVal::Expr( expr ) => self.expr_check(expr, Some(expect_type))?,
       AsgnRVal::Note( note ) => {
         if expect_type != BType::Note {
           return Err(Error::SemanticError(format!("expect {expect_type}, but found note")));
         }
-        let res = self.note_check(note);
-        if res.is_err() {
-          return Err(res.err().unwrap());
-        }
+        self.note_check(note)?;
       }
       AsgnRVal::Measure( measure ) => {
         if expect_type != BType::Measure {
           return Err(Error::SemanticError(format!("expect {expect_type}, but found measure")));
         }
-        let res = self.measure_check(measure);
-        if res.is_err() {
-          return Err(res.err().unwrap());
-        }
+        self.measure_check(measure)?;
       }
       AsgnRVal::Phrase(phrase ) => {
         if expect_type != BType::Phrase {
           return Err(Error::SemanticError(format!("expect {expect_type}, but found phrase")));
         }
-        let res = self.phrase_check(phrase);
-        if res.is_err() {
-          return Err(res.err().unwrap());
-        }
+        self.phrase_check(phrase)?;
       }
       AsgnRVal::Track( track ) => {
         if expect_type != BType::Track {
           return Err(Error::SemanticError(format!("expect {expect_type}, but found track")));
         }
-        let res = self.track_check(track);
-        if res.is_err() {
-          return Err(res.err().unwrap());
-        }
+        self.track_check(track)?;
       }
     }
     Ok(())

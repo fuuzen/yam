@@ -70,10 +70,10 @@ MatchedStmt ::= "if" "(" Expr ")" MatchedStmt "else" MatchedStmt
 
 Block       ::= "{" {Stmt} "}";
 
-ChannelStmt ::= "@" Expr "<-" TrackRVal ";"  /* 设置输入轨道 */
+ScoreStmt ::= "@" Expr "<-" TrackRVal ";"  /* 设置输入轨道 */
               | "@" Expr "->" Expr ";"       /* 设置midi乐器,0-127 */
               ;
 
-Score       ::= "@" "score" "{" {Stmt} {ChannelStmt} "}"
+Score       ::= "@" "score" "{" {Stmt} {ScoreStmt} "}"
 
 CompUnit    ::= {Decl | FuncDef} Score;

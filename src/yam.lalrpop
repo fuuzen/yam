@@ -226,14 +226,6 @@ NoteRVal: Note = {
 
 use crate::ast::measure::{*};
 
-Tempo: Expr = {
-  "," <Expr> => <>
-}
-
-MeasureAttr: MeasureAttr = {
-  "(" <top_num: Expr> ":" <bottom_num: Expr> <tempo: Option<Tempo>> ")" => MeasureAttr { <> }
-}
-
 Len: Expr = { "=" <expr: Expr> => expr }
 
 MeasureUnit: MeasureUnit = {
@@ -247,7 +239,7 @@ MeasureUnit: MeasureUnit = {
 }
 
 Measure: Measure = {
-  <attr: Option<MeasureAttr>> "|" <content: VecComma<MeasureUnit>> "|" => Measure{ <> }
+  "|" <content: VecComma<MeasureUnit>> "|" => Measure{ <> }
 }
 
 MeasureRVal:MeasureRVal = {
@@ -262,7 +254,7 @@ MeasureRVal:MeasureRVal = {
 use crate::ast::phrase::{*};
 
 Phrase: Phrase = {
-  <attr: Option<MeasureAttr>> "[" <content: Vec<MeasureRVal>> "]" => Phrase{ <> }
+  "[" <content: Vec<MeasureRVal>> "]" => Phrase{ <> }
 }
 
 PhraseRVal:PhraseRVal = {
@@ -291,13 +283,15 @@ TrackRVal: TrackRVal = {
 
 use crate::ast::score::{*};
 
-ChannelStmt: ChannelStmt = {
-  "@" <channel: Expr> "<-" <track: TrackRVal> ";" => ChannelStmt::SetChannelTrack(SetChannelTrack{ <> }),
-  "@" <channel: Expr> "->" <instrument: Expr> ";" => ChannelStmt::SetChannelInstrument(SetChannelInstrument{ <> })
+ScoreStmt: ScoreStmt = {
+  "@" <channel: Expr> "<-" <track: TrackRVal> ";" => ScoreStmt::SetChannelTrack(SetChannelTrack{ <> }),
+  "@" <channel: Expr> "->" <instrument: Expr> ";" => ScoreStmt::SetChannelInstrument(SetChannelInstrument{ <> }),
+  "@" "tempo" "=" <tempo: Expr> ";" => ScoreStmt::SetTempo( <> ),
+  "@" "timesig" "=" <top_num: Expr> ":" <bottom_num: Expr> ";" => ScoreStmt::SetTimeSignature(SetTimeSignature{ <> })
 }
 
 Score: Score = {
-  "@" "score" "{" <stmts: Stmts> <channel_stmts: Vec<ChannelStmt>> "}" => Score{
+  "@" "score" "{" <stmts: Stmts> <channel_stmts: Vec<ScoreStmt>> "}" => Score{
     block: Rc::new(Block::new(stmts)),
     channel_stmts: channel_stmts
   }

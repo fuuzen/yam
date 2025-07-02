@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{ast::{measure::{MeasureAttrValue, MeasureUnitValue}, score::{ChannelStmt, Score, SetChannelInstrument, SetChannelTrack}, track::TrackRVal, val::Value}, error::Error, interpret::ctr::RetVal};
+use crate::{ast::{measure::MeasureUnitValue, score::{Score, ScoreStmt, SetChannelInstrument, SetChannelTrack, SetTimeSignature}, track::TrackRVal, val::Value}, error::Error, interpret::ctr::RetVal};
 
 use midi_file::{core::GeneralMidi, MidiFile};
 use midi_file::core::{Channel, Clocks, DurationName, NoteNumber, Velocity};
@@ -15,19 +15,10 @@ const MEASURE_TICKS: u32 = 4 * 1024;
 /// 默认音符开启/关闭力度
 const DEFAULT_VELOCITY: Velocity = Velocity::new(72);
 
+/// 默认是X/4拍,四分音符为单位
+const DEFAULT_TIME_SIGNATURE_DENOMINATOR: i32 = 4;
+
 const DEFAULT_TIME_SIGNATURE_CLOCKS: Clocks = Clocks::Quarter;
-
-const DEFAULT_MEASURRE_ATTR_VALUE: MeasureAttrValue = MeasureAttrValue {
-  // u8 = 4 as u8;
-  top_num: 4,
-
-  // DurationName = DurationName::Quarter;
-  bottom_num: 4,
-
-  // 默认tempo,顾名思义代表每分钟的四分音符数量
-  // QuartersPerMinute = QuartersPerMinute::new(80 as u8);
-  tempo: Some(80)
-};
 
 impl Interpreter {
   /// 翻译 Score 块最终生成 midi
@@ -39,11 +30,14 @@ impl Interpreter {
     }
 
     let mut midi_file = MidiFile::new();
-    let mut tracks: HashMap<Channel, MidiTrack> = HashMap::new();
+    let mut tracks: HashMap<u8, MidiTrack> = HashMap::new();
+    let mut deltas: HashMap<u8, u32> = HashMap::new();  // 继承上一次 SetChannelTrack 可能留下来的下一次开启音符的 delta
+    let mut meta_track = MidiTrack::default();
+    let mut time_sig_denominator = DEFAULT_TIME_SIGNATURE_DENOMINATOR;  // denominator of time signature, default 4
 
     for stmt in &score.channel_stmts {
       match stmt {
-        ChannelStmt::SetChannelInstrument(SetChannelInstrument{channel, instrument}) => {
+        ScoreStmt::SetChannelInstrument(SetChannelInstrument{channel, instrument}) => {
           // 计算并检查 channel
           let res = self.calc_expr(channel);
           if res.is_err() {
@@ -63,14 +57,14 @@ impl Interpreter {
           };
           let ch = Channel::new(ch_u8);
 
-          // 获取该 channel 的 track
-          let res = tracks.get_mut(&ch);
-          if res.is_none() {
-            return Err(Error::RuntimeError(format!(
-              "channel {ch} hasn't been assigned any track yet",
-            )))
-          }
-          let track = res.unwrap();
+          // // 获取该 channel 的 track
+          // let res = tracks.get_mut(&ch_u8);
+          // if res.is_none() {
+          //   return Err(Error::RuntimeError(format!(
+          //     "channel {ch} hasn't been assigned any track yet",
+          //   )))
+          // }
+          // let track = res.unwrap();
           
           // 计算并检查 instrument
           let res = self.calc_expr(instrument);
@@ -92,10 +86,11 @@ impl Interpreter {
           let instr = GeneralMidi::from(instr_u8);
 
           // 设置 midi 乐器
-          track.set_general_midi(ch, instr)
+          meta_track.set_general_midi(ch, instr)
             .map_err(|e| Error::RuntimeError(e.to_string()))?;
         },
-        ChannelStmt::SetChannelTrack(SetChannelTrack{channel, track: track_rval}) => {
+
+        ScoreStmt::SetChannelTrack(SetChannelTrack{channel, track: track_rval}) => {
           // 计算并检查 channel
           let res = self.calc_expr(channel);
           if res.is_err() {
@@ -151,96 +146,48 @@ impl Interpreter {
             },
           };
 
-          let mut track = MidiTrack::default();
+          let track_ = tracks.get(&channel_u8).cloned();
+          let track_is_new = track_.is_none();
+          let mut track = match track_ {
+            None => MidiTrack::default(),
+            Some(t) => t.clone()
+          };
+          let mut delta = match track_is_new {
+            true => 0,
+            false => *deltas.get(&channel_u8).unwrap(),
+          };
+          let mut notes_to_off: Vec<(u32, u32)> = vec![];
+          let mut elapsed_ticks = 0;
+          let mut tick_step = MEASURE_TICKS / time_sig_denominator as u32;
 
-          // 应用 MeasureAttrValue 的信息
-          let apply_time_signature = |attr: &MeasureAttrValue, track: &mut MidiTrack| -> Result<(), Error> {
-            let numerator = u8::try_from(attr.top_num)
-              .map_err(|_| Error::RuntimeError(format!(
-                "numerator of measure attr must between 0 and 255"
-              )))?;
-            let denominator = match attr.bottom_num {
-              1 => DurationName::Whole,
-              2 => DurationName::Half,
-              4 => DurationName::Quarter,
-              8 => DurationName::Eighth,
-              16 => DurationName::Sixteenth,
-              32 => DurationName::D32,
-              64 => DurationName::D64,
-              128 => DurationName::D128,
-              256 => DurationName::D256,
-              512 => DurationName::D512,
-              1024 => DurationName::D1024,
-              _ => return Err(Error::RuntimeError(format!(
-                "denominator of measure attr must be one of 1,2,4,8,16,32,64,128,256,512,1024"
-              ))),
-            };
-
-            track.push_time_signature(0, numerator, denominator, DEFAULT_TIME_SIGNATURE_CLOCKS)
-              .map_err(|e| Error::RuntimeError(e.to_string()))?;
-
-            if attr.tempo.is_some() {
-              let tempo_u8 = u8::try_from(attr.tempo.unwrap())
-                .map_err(|_| Error::RuntimeError(format!(
-                  "tempo of measure attr must between 0 and 255"
-                )))?;
-              let tempo = QuartersPerMinute::new(tempo_u8);
-
-              track.push_tempo(0, tempo)
-                .map_err(|e| Error::RuntimeError(e.to_string()))?;
+          // 模拟midi经过了tick_step个tick,在此期间可能有标记了延长的音符需要关闭
+          let elapse = |track: &mut MidiTrack, tick_step: u32, notes_to_off: &mut Vec<(u32, u32)>, elapsed_ticks: &mut u32, delta: &mut u32| -> Result<(), Error> {
+            notes_to_off.sort();  // 升序
+            let term = *elapsed_ticks + tick_step;
+            let mut count = 0;  // 记录需要删掉多少个 note_to_off 记录
+            for i in 0..notes_to_off.len() {
+              let (target_elapsed_ticks, note) = &notes_to_off[i];
+              if *target_elapsed_ticks > term {
+                break;
+              }
+              let delta = *target_elapsed_ticks - *elapsed_ticks;
+              track.push_note_off(
+                delta,
+                channel,
+                NoteNumber::new(*note as u8),
+                DEFAULT_VELOCITY
+              ).map_err(|e| Error::RuntimeError(e.to_string()))?;
+              count += 1;
+              *elapsed_ticks += delta;
             }
-
+            notes_to_off.drain(0..count);
+            *delta += term - *elapsed_ticks;
+            *elapsed_ticks = term;
             Ok(())
           };
 
-          let mut attr = DEFAULT_MEASURRE_ATTR_VALUE;
-          apply_time_signature(&attr, &mut track)?;
-
           for phrase_val in &track_val.content {
-            let attr_bak = attr.clone();
-            if phrase_val.attr.is_some() {
-              attr = phrase_val.attr.as_ref().unwrap().clone();
-              apply_time_signature(&attr, &mut track)?;
-            }
-
             for measure_val in &phrase_val.content {
-              let attr_bak = attr.clone();
-              if measure_val.attr.is_some() {
-                attr = measure_val.attr.as_ref().unwrap().clone();
-                apply_time_signature(&attr, &mut track)?;
-              }
-
-              let mut notes_to_off: Vec<(u32, u32)> = vec![];
-              let mut elapsed_ticks = 0;
-              let mut tick_step = MEASURE_TICKS / attr.bottom_num as u32;
-              let mut delta = 0;
-
-              // 模拟midi经过了tick_step个tick,在此期间可能有标记了延长的音符需要关闭
-              let elapse = |track: &mut MidiTrack, tick_step: u32, notes_to_off: &mut Vec<(u32, u32)>, elapsed_ticks: &mut u32, delta: &mut u32| -> Result<(), Error> {
-                notes_to_off.sort();  // 升序
-                let term = *elapsed_ticks + tick_step;
-                let mut count = 0;  // 记录需要删掉多少个 note_to_off 记录
-                for i in 0..notes_to_off.len() {
-                  let (target_elapsed_ticks, note) = &notes_to_off[i];
-                  if *target_elapsed_ticks > term {
-                    break;
-                  }
-                  let delta = *target_elapsed_ticks - *elapsed_ticks;
-                  track.push_note_off(
-                    delta,
-                    channel,
-                    NoteNumber::new(*note as u8),
-                    DEFAULT_VELOCITY
-                  ).map_err(|e| Error::RuntimeError(e.to_string()))?;
-                  count += 1;
-                  *elapsed_ticks += delta;
-                }
-                notes_to_off.drain(0..count);
-                *delta = term - *elapsed_ticks;
-                *elapsed_ticks = term;
-                Ok(())
-              };
-
               for measure_unit in &measure_val.content {
                 match measure_unit {
                   MeasureUnitValue::TimeDilation => tick_step /= 2,
@@ -274,26 +221,80 @@ impl Interpreter {
                   }
                 }
               }
-
-              // 恢复被覆盖的属性
-              if phrase_val.attr.is_some() {
-                attr = attr_bak;
-                apply_time_signature(&attr, &mut track)?;
-              }
-            }
-
-            // 恢复被覆盖的属性
-            if phrase_val.attr.is_some() {
-              attr = attr_bak;
-              apply_time_signature(&attr, &mut track)?;
             }
           }
+          if track_is_new {
+            tracks.insert(channel_u8, track);
+            deltas.insert(channel_u8, delta);
+          } else {
+            *tracks.get_mut(&channel_u8).unwrap() = track;
+            *deltas.get_mut(&channel_u8).unwrap() = delta;
+          }
+        },
 
-          tracks.insert(channel, track);
+        ScoreStmt::SetTimeSignature(SetTimeSignature{top_num, bottom_num}) => {
+          let numerator = u8::try_from(
+            match self.calc_expr(top_num)? {
+              RetVal::Value(Value::Int( int )) => int,
+              val => return Err(Error::RuntimeError(format!(
+                "expect i32, but found {val}",
+              )))
+            }
+          ).map_err(|_| Error::RuntimeError(format!(
+            "numerator of time signature must between 0 and 255"
+          )))?;
+
+          let denominator = match match self.calc_expr(bottom_num)? {
+            RetVal::Value(Value::Int( int )) => {
+              time_sig_denominator = int;
+              int
+            },
+            val => return Err(Error::RuntimeError(format!(
+              "expect i32, but found {val}",
+            )))
+          } {
+            1 => DurationName::Whole,
+            2 => DurationName::Half,
+            4 => DurationName::Quarter,
+            8 => DurationName::Eighth,
+            16 => DurationName::Sixteenth,
+            32 => DurationName::D32,
+            64 => DurationName::D64,
+            128 => DurationName::D128,
+            256 => DurationName::D256,
+            512 => DurationName::D512,
+            1024 => DurationName::D1024,
+            _ => return Err(Error::RuntimeError(format!(
+              "denominator of time signature must be one of 1,2,4,8,16,32,64,128,256,512,1024"
+            ))),
+          };
+
+          meta_track.push_time_signature(0, numerator, denominator, DEFAULT_TIME_SIGNATURE_CLOCKS)
+            .map_err(|e| Error::RuntimeError(e.to_string()))?;
+        },
+
+        ScoreStmt::SetTempo( expr ) => {
+          
+          let tempo_u8 = u8::try_from(
+            match self.calc_expr(expr)? {
+              RetVal::Value(Value::Int( int )) => int,
+              val => return Err(Error::RuntimeError(format!(
+                "expect i32, but found {val}",
+              )))
+            }
+          ).map_err(|_| Error::RuntimeError(format!(
+            "tempo must between 0 and 255"
+          )))?;
+          let tempo = QuartersPerMinute::new(tempo_u8);
+
+          meta_track.push_tempo(0, tempo)
+            .map_err(|e| Error::RuntimeError(e.to_string()))?;
         }
       }
     }
 
+    midi_file.push_track(meta_track)
+      .map_err(|e| Error::RuntimeError(e.to_string()))?;
     for (_, track) in tracks {
       midi_file.push_track(track)
         .map_err(|e| Error::RuntimeError(e.to_string()))?;

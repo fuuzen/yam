@@ -5,8 +5,8 @@ use crate::ast::{measure::MeasureValue, note::NoteValue, phrase::PhraseValue, tr
 /// 各个类型的默认初始值
 pub const INT_DEFAULT: i32 = 0;
 pub const NOTE_DEFAULT: NoteValue = NoteValue{notes: vec![], len: None};
-pub const MEASURE_DEFAULT: MeasureValue = MeasureValue{attr: None, content: vec![]};
-pub const PHRASE_DEFAULT: PhraseValue = PhraseValue{attr: None, content: vec![]};
+pub const MEASURE_DEFAULT: MeasureValue = MeasureValue{content: vec![]};
+pub const PHRASE_DEFAULT: PhraseValue = PhraseValue{content: vec![]};
 pub const TRACK_DEFAULT: TrackValue = TrackValue{content: vec![]};
 
 /// 所有的 Base Type 的定义
