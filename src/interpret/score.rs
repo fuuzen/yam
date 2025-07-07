@@ -56,15 +56,6 @@ impl Interpreter {
             )))
           };
           let ch = Channel::new(ch_u8);
-
-          // // 获取该 channel 的 track
-          // let res = tracks.get_mut(&ch_u8);
-          // if res.is_none() {
-          //   return Err(Error::RuntimeError(format!(
-          //     "channel {ch} hasn't been assigned any track yet",
-          //   )))
-          // }
-          // let track = res.unwrap();
           
           // 计算并检查 instrument
           let res = self.calc_expr(instrument);

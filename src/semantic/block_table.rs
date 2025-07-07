@@ -9,11 +9,12 @@ impl Analyzer {
   /// 将 block 记录在其 id 为索引的哈希表中
   pub fn add_block(&mut self, block: Rc<Block>) -> Result<(), Error> {
     let k = block.get_id();
-    let res = self.block_table.insert(k, block.clone());
-    if res.is_some() {
-      return Err(Error::InternalError(format!("block id conflict: {}", k)));
+    match self.block_table.insert(k, block.clone()) {
+      Some(_) => Err(Error::InternalError(format!(
+        "failed to new block add to block table. block id conflict: {k}"
+      ))),
+      None => Ok(())
     }
-    Ok(())
   }
 
   /// 获取给定 BlockId 的父级 Block

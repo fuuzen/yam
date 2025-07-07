@@ -60,22 +60,15 @@ impl Analyzer {
                 
                 match &unary_expr.primary_exp {
                   PrimaryExpr::LVal( lval ) => {
-                    let mut res = self.lval_check(lval);
-                    if res.is_err() {
-                      return res;
-                    }
+                    self.lval_check(lval)?;
 
-                    let ret_type = lval.rval.borrow().clone().unwrap().get_btype();
-                    res = match flag2 && expect_type_.is_some() {
+                    match flag2 && expect_type_.is_some() {
                       true => Ok(()),  // 表达式只有这一个 unary_expr 且没有任何运算,不需要检查类型
                       false => type_check(
-                        ret_type,
+                        lval.rval.borrow().clone().unwrap().get_btype(),
                         expect_type_.unwrap()
                       ),
-                    };
-                    if res.is_err() {
-                      return res;
-                    }
+                    }?;
                   },
                   PrimaryExpr::FuncCall( func_call ) => {
                     let res = self.func_call_check(func_call);
@@ -116,16 +109,13 @@ impl Analyzer {
                     }
                   },
                   PrimaryExpr::Expr( expr ) => {
-                    let res = match expect_type_.is_some() {
+                    match expect_type_.is_some() {
                       false => self.expr_check(expr, None),
                       true => match flag2 {
                         true => self.expr_check(expr, expect_type_),  // 没有任何运算,相当于冗余括号
                         false => self.expr_check(expr, Some(BType::Int)),  // 有运算,必须为int/bool
                       },
-                    };
-                    if res.is_err() {
-                      return res;
-                    }
+                    }?;
                   },
                   PrimaryExpr::Number( _ ) => {}
                 }

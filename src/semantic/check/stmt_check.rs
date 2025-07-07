@@ -46,7 +46,7 @@ impl Analyzer {
 
               let ret_type = lval.rval.borrow().as_ref().unwrap().get_btype();
               match ret_type != BType::Track {
-                true => Err(Error::SemanticError(format!("expect track, but found {ret_type}", ))),
+                true => Err(Error::SemanticError(format!("expect track, but found {ret_type}"))),
                 false => Ok(())
               }
             },
@@ -54,10 +54,10 @@ impl Analyzer {
               let ret_type = self.func_call_check(func_call)?;
 
               match ret_type {
-                FuncType::Void => Err(Error::SemanticError(format!("expect track, but found void", ))),
+                FuncType::Void => Err(Error::SemanticError(format!("expect track, but found void"))),
                 FuncType::BType( ret_type ) => {
                   match ret_type != BType::Track {
-                    true => Err(Error::SemanticError(format!("expect track, but found {ret_type}", ))),
+                    true => Err(Error::SemanticError(format!("expect track, but found {ret_type}"))),
                     false => Ok(())
                   }
                 }

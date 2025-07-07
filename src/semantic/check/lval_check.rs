@@ -11,11 +11,7 @@ impl Analyzer {
     
     let mut scope = self.get_current_scope();
 
-    let mut res_rval = scope.lval_check(lval);
-    if res_rval.is_err() {
-      return Err(res_rval.err().unwrap());
-    }
-    let mut rval_ = res_rval.unwrap();
+    let mut rval_ = scope.lval_check(lval)?;
     
     while rval_.is_none() {
       let block = self.get_current_block();
@@ -28,25 +24,15 @@ impl Analyzer {
       let parent_id = parent_id_.unwrap();
       
       // 进入父级 Block
-      let res = self.set_current_block(parent_id);
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
+      self.set_current_block(parent_id)?;
 
       scope = self.get_current_scope();
 
-      res_rval = scope.lval_check(lval);
-      if res_rval.is_err() {
-        return Err(res_rval.err().unwrap());
-      }
-      rval_ = res_rval.unwrap();
+      rval_ = scope.lval_check(lval)?;
     }
 
     // 恢复当前 Block Id
-    let res = self.set_current_block(cur_block_id);
-    if res.is_err() {
-      return Err(res.err().unwrap());
-    }
+    self.set_current_block(cur_block_id)?;
 
     // 绑定 RVal
     lval.bind_rval(rval_.unwrap());

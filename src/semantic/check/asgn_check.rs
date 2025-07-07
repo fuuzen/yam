@@ -8,21 +8,12 @@ impl Analyzer {
   /// 类型检查通过调用表达式检查实现，即检查表达式结果类型。
   pub fn asgn_check(&mut self, asgn: &Asgn) -> Result<(), Error> {
     let lval = &asgn.lval;
-    let mut res = self.lval_check(lval);
-    if res.is_err() {
-      return Err(res.err().unwrap());
+    self.lval_check(lval)?;
+    match lval.rval.borrow().clone() {
+      None => Err(Error::InternalError(format!(
+        "{} was declared but RVal of {} was not bound", lval.ident, lval.ident
+      ))),
+      Some( rval) => self.asgn_rval_check(&asgn.rval, rval.get_btype())
     }
-
-    let rval_ = lval.rval.borrow().clone();
-    if rval_.is_none() {
-      return Err(Error::InternalError(format!("{} was declared but RVal of {} was not bound", lval.ident, lval.ident)));
-    }
-
-    res = self.asgn_rval_check(&asgn.rval, lval.rval.borrow().clone().unwrap().get_btype());
-    if res.is_err() {
-      return Err(res.err().unwrap());
-    }
-
-    Ok(())
   }
 }

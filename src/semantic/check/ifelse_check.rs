@@ -5,21 +5,12 @@ use super::Analyzer;
 impl Analyzer {
   /// If ... [Else ...] 语句的检查
   pub fn ifelse_check(&mut self, ifelse: &IfElse) -> Result<(), Error> {
-    let mut res = self.expr_check(&ifelse.cond, Some(BType::Bool));
-    if res.is_err() {
-      return Err(res.err().unwrap());
-    }
+    self.expr_check(&ifelse.cond, Some(BType::Bool))?;
 
-    res = self.stmt_check(&ifelse.if_);
-    if res.is_err() {
-      return Err(res.err().unwrap());
-    }
+    self.stmt_check(&ifelse.if_)?;
 
     if ifelse.else_.is_some() {
-      res = self.stmt_check(ifelse.else_.as_ref().unwrap());
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
+      self.stmt_check(ifelse.else_.as_ref().unwrap())?;
     }
     Ok(())
   }

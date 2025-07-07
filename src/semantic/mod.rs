@@ -62,17 +62,8 @@ impl Analyzer {
   /// 设置当前分析检查到的 Block 的 Id
   pub fn set_current_block(&mut self, block_id: BlockId) -> Result<(), Error> {
     self.current_block_id = block_id;
-    let res = self.get_block_by_id(&block_id);
-    if res.is_err() {
-      return Err(res.err().unwrap());
-    }
-    self.current_block = Some(res.unwrap().clone());
-
-    let res = self.get_scope_by_id(&block_id);
-    if res.is_err() {
-      return Err(res.err().unwrap());
-    }
-    self.current_scope = Some(res.unwrap().clone());
+    self.current_block = Some(self.get_block_by_id(&block_id)?.clone());
+    self.current_scope = Some(self.get_scope_by_id(&block_id)?);
     Ok(())
   }
 

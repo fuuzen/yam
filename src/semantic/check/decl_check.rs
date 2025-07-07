@@ -8,21 +8,18 @@ impl Analyzer {
   pub fn const_decl_check(&mut self, const_decl: &ConstDecl) -> Result<(), Error> {
     let len = const_decl.const_defs.len();
     for i in 0..len {
-      let const_def = &const_decl.const_defs[i];
-      let ConstDef{ident, rval: asgn_rval} = const_def;
+      let ConstDef{ident, rval: asgn_rval} = &const_decl.const_defs[i];
 
-      let scope = self.get_current_scope();
+      self.get_current_scope().decl(
+        ident,
+        true,
+        const_decl.rvals[i].clone()
+      )?;
 
-      let rval = const_decl.rvals[i].clone();
-      let mut res = scope.decl(ident, true, rval);
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
-
-      res = self.asgn_rval_check(&asgn_rval, const_decl.btype);
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
+      self.asgn_rval_check(
+        &asgn_rval,
+        const_decl.btype
+      )?;
     }
     Ok(())
   }
@@ -31,22 +28,19 @@ impl Analyzer {
   pub fn var_decl_check(&mut self, var_decl: &VarDecl) -> Result<(), Error> {
     let len = var_decl.var_defs.len();
     for i in 0..len {
-      let var_def = &var_decl.var_defs[i];
-      let VarDef{ident, rval_: asgn_rval_} = var_def;
+      let VarDef{ident, rval_} =  &var_decl.var_defs[i];
 
-      let scope = self.get_current_scope();
+      self.get_current_scope().decl(
+        ident,
+        false,
+        var_decl.rvals[i].clone()
+      )?;
 
-      let rval = var_decl.rvals[i].clone();
-      let mut res = scope.decl(ident, false, rval.clone());
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
-
-      if asgn_rval_.is_some() {
-        res = self.asgn_rval_check(asgn_rval_.as_ref().unwrap(), var_decl.btype);
-        if res.is_err() {
-          return Err(res.err().unwrap());
-        }
+      if rval_.is_some() {
+        self.asgn_rval_check(
+          rval_.as_ref().unwrap(),
+          var_decl.btype
+        )?;
       }
     }
     Ok(())

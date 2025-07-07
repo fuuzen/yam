@@ -30,11 +30,7 @@ impl Interpreter {
     for i in 0..len {
       let param = &func_def.func_fparams[i];
       let asgn_rval = &func_call.func_rparams[i];
-      let res = self.interpret_asgn_rval(asgn_rval);
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
-      match res.unwrap() {
+      match self.interpret_asgn_rval(asgn_rval)? {
         RetVal::Value( v ) => param.set_value(v),
         val => {
           let ident = &func_def.func_fparams[i].ident;
@@ -46,13 +42,8 @@ impl Interpreter {
         }
       }
     }
-    
-    let res = self.interpret_block(func_def.block.clone());
-    if res.is_err() {
-      return Err(res.err().unwrap());
-    }
 
-    match res.unwrap() {
+    match self.interpret_block(func_def.block.clone())? {
       Ctr::Return( v ) => Ok(v),
       _ => Err(Error::RuntimeError("function didn't return".to_string())),
     }
@@ -61,11 +52,7 @@ impl Interpreter {
   pub fn interpret_const_decl(&mut self, const_decl: &ConstDecl) -> Result<Ctr, Error> {
     let len = const_decl.const_defs.len();
     for i in 0..len {
-      let res = self.interpret_asgn_rval(&const_decl.const_defs[i].rval);
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
-      match res.unwrap() {
+      match self.interpret_asgn_rval(&const_decl.const_defs[i].rval)? {
         RetVal::Value( v ) => const_decl.rvals[i].set_value(v),
         val => {
           let ident = &const_decl.const_defs[i].ident;
@@ -88,11 +75,7 @@ impl Interpreter {
         continue;
       }
 
-      let res = self.interpret_asgn_rval(asgn_rval_.as_ref().unwrap());
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
-      match res.unwrap() {
+      match self.interpret_asgn_rval(asgn_rval_.as_ref().unwrap())? {
         RetVal::Value( v ) => var_decl.rvals[i].set_value(v),
         val => {
           let ident = &var_decl.var_defs[i].ident;
@@ -125,12 +108,7 @@ impl Interpreter {
   }
 
   pub fn interpret_ifelse(&mut self, ifelse: &IfElse) -> Result<Ctr, Error> {
-    let res = self.calc_expr(&ifelse.cond);
-    if res.is_err() {
-      return Err(res.err().unwrap());
-    }
-
-    match res.clone().unwrap() {
+    match self.calc_expr(&ifelse.cond)?.clone() {
       RetVal::Value(Value::Int(0)) => match &ifelse.else_ {
         Some( else_ ) => self.interpret_stmt(else_),
         None => Ok(Ctr::None),
@@ -143,39 +121,20 @@ impl Interpreter {
   }
 
   pub fn interpret_while(&mut self, while_: &While) -> Result<Ctr, Error> {
-    let mut res_cond = self.calc_expr(&while_.cond);
-    if res_cond.is_err() {
-      return Err(res_cond.err().unwrap());
-    }
-
-    while res_cond.clone().is_ok_and( |v| match v {
+    while match self.calc_expr(&while_.cond)?.clone() {
       RetVal::Value(Value::Int(0)) => false,
       RetVal::Value(Value::Int(_)) => true,
-      _ => false,
-    }){
-      let res = self.interpret_stmt(&while_.body);
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
-
-      match res {
-        Ok(Ctr::Break) => return Ok(Ctr::None), // while 循环结束
-        Ok(Ctr::Return( _ )) => return res,
+      val => return Err(Error::RuntimeError(format!(
+        "expect int/bool for condition, but found {val}"
+      ))),
+    }{
+      match self.interpret_stmt(&while_.body)? {
+        Ctr::Break => break, // while 循环结束
+        Ctr::Return( v ) => return Ok(Ctr::Return( v )),
         _ => (),
       }
-
-      res_cond = self.calc_expr(&while_.cond);
-      if res_cond.is_err() {
-        return Err(res.err().unwrap());
-      }
     }
-    
-    match res_cond.clone().unwrap() {
-      RetVal::Value(Value::Int(_)) => Ok(Ctr::None),
-      val => Err(Error::RuntimeError(format!(
-        "expect int/bool for condition, but found {val}"
-      )))
-    }
+    Ok(Ctr::None)
   }
 
   pub fn interpret_return(&mut self, expr_: &Option<Expr>) -> Result<Ctr, Error> {
@@ -211,14 +170,9 @@ impl Interpreter {
 
   pub fn interpret_block(&mut self, block: Rc<Block>) -> Result<Ctr, Error> {
     for stmt in &block.stmts {
-      let res = self.interpret_stmt(stmt);
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
-
-      match res {
-        Ok(Ctr::Break) => return res,
-        Ok(Ctr::Return( _ )) => return res,
+      match self.interpret_stmt(stmt)? {
+        Ctr::Break => return Ok(Ctr::Break),
+        Ctr::Return( v ) => return Ok(Ctr::Return( v )),
         _ => (),
       }
     }
@@ -228,20 +182,10 @@ impl Interpreter {
   pub fn interpret(&mut self, comp_unit: &CompUnit) -> Result<MidiFile, Error> {
     for stmt in &comp_unit.block.stmts {
       match stmt {
-        Stmt::VarDecl( var_decl ) => {
-          let res = self.interpret_var_decl(var_decl);
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          }
-        },
-        Stmt::ConstDecl( const_decl ) => {
-          let res = self.interpret_const_decl(const_decl);
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          }
-        },
-        _ => (),
-      }
+        Stmt::VarDecl( var_decl ) => self.interpret_var_decl(var_decl),
+        Stmt::ConstDecl( const_decl ) => self.interpret_const_decl(const_decl),
+        _ => Ok(Ctr::None),
+      }?;
     }
     self.interpret_score(&comp_unit.score)
   }

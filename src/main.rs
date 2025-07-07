@@ -1,5 +1,5 @@
 use std::fs::read_to_string;
-use std::io::Result;
+use std::io::{Result, Error, ErrorKind};
 use yam::{SyntacticAnalyzer, SemanticAnalyzer, Interpreter};
 
 use clap::Parser;
@@ -29,40 +29,25 @@ fn main() -> Result<()> {
   let parser = SyntacticAnalyzer::new();
 
   // 词法&语法解析
-  let parse_res = parser.parse(&input);
-  if parse_res.is_err() {
-    println!("{}", parse_res.unwrap_err());
-    return Ok(());
-  }
+  let comp_unit =  parser.parse(&input)?;
   println!("Lexical and syntactic parsed successfully");
-  let comp_unit = parse_res.as_ref().unwrap();
 
   // 创建语义分析器
   let mut semantic_analyzer = SemanticAnalyzer::new();
 
   // 语义检查
-  let res = semantic_analyzer.check(comp_unit);
-  if res.is_err() {
-    println!("{}", res.err().unwrap());
-    return Ok(());
-  }
+  semantic_analyzer.check(&comp_unit)?;
   println!("Semantic check successflly");
+  
+  // 创建解释器
+  let mut interpreter = Interpreter::new();
 
   // 执行翻译
-  let mut interpreter = Interpreter::new();
-  let res = interpreter.interpret(comp_unit);
-  if res.is_err() {
-    println!("{}", res.err().unwrap());
-    return Ok(());
-  }
+  let midi_file = interpreter.interpret(&comp_unit)?;
   println!("Interpret successflly");
 
   // 保存 midi 文件
-  let res = res.unwrap().save(output);
-  if res.is_err() {
-    println!("{}", res.err().unwrap());
-    return Ok(());
-  }
-
-  Ok(())
+  midi_file.save(output).map_err(|e|
+    Error::new(ErrorKind::Other, e.to_string())
+  )
 }

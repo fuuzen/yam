@@ -7,11 +7,7 @@ impl Interpreter {
   pub fn interpret_note(&mut self, note: &Note) -> Result<NoteValue, Error> {
     let mut notes = vec![];
     for expr in &note.notes {
-      let res = self.calc_expr(expr);
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
-      let mut v = match res.unwrap() {
+      let mut v = match self.calc_expr(expr)? {
         RetVal::Value(Value::Int( int )) => vec![int],
         RetVal::Value(Value::Note( note )) => note.notes,
         val => return Err(Error::RuntimeError(format!(
@@ -23,11 +19,7 @@ impl Interpreter {
     
     let len  = match note.len.is_some() {
       true => {
-        let res = self.calc_expr(note.len.as_ref().unwrap());
-        if res.is_err() {
-          return Err(res.err().unwrap());
-        }
-        match res.unwrap() {
+        match self.calc_expr(note.len.as_ref().unwrap())? {
           RetVal::Value(Value::Int( int )) => Some(int),
           val => return Err(Error::RuntimeError(format!(
             "expect i32, but found {val}",
@@ -44,13 +36,7 @@ impl Interpreter {
     let mut content = vec![];
     for unit in &measure.content {
       let unit_val = match unit {
-        MeasureUnit::Note( note ) => {
-          let res = self.interpret_note(note);
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          }
-          MeasureUnitValue::NoteValue(res.unwrap())
-        },
+        MeasureUnit::Note( note ) => MeasureUnitValue::NoteValue(self.interpret_note(note)?),
         MeasureUnit::Rest => MeasureUnitValue::Rest,
         MeasureUnit::TimeDilation => MeasureUnitValue::TimeDilation,
         MeasureUnit::TimeCompression => MeasureUnitValue::TimeCompression,
@@ -65,13 +51,7 @@ impl Interpreter {
     let mut content = vec![];
     for measure_rval in &phrase.content {
       let measure_val = match measure_rval {
-        MeasureRVal::Measure( measure ) => {
-          let res = self.interpret_measure(measure);
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          }
-          res.unwrap()
-        },
+        MeasureRVal::Measure( measure ) => self.interpret_measure(measure)?,
         MeasureRVal::LVal( lval ) => {
           match lval.rval.borrow().as_ref().clone().unwrap().get_value() {
             Value::Measure( v ) => v,
@@ -81,11 +61,7 @@ impl Interpreter {
           }
         },
         MeasureRVal::FuncCall( func_call ) => {
-          let res = self.call_func(func_call);
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          };
-          match res.unwrap() {
+          match self.call_func(func_call)? {
             RetVal::Void => return Err(Error::RuntimeError(format!(
               "expect measure, but found void",
             ))),
@@ -108,13 +84,7 @@ impl Interpreter {
     let mut content = vec![];
     for phrase_rval in &track.content {
       let phrase_val = match phrase_rval {
-        PhraseRVal::Phrase( phrase ) => {
-          let res = self.interpret_phrase(phrase);
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          }
-          res.unwrap()
-        },
+        PhraseRVal::Phrase( phrase ) => self.interpret_phrase(phrase)?,
         PhraseRVal::LVal( lval ) => {
           match lval.rval.borrow().as_ref().clone().unwrap().get_value() {
             Value::Phrase( v ) => v,
@@ -124,11 +94,7 @@ impl Interpreter {
           }
         },
         PhraseRVal::FuncCall( func_call ) => {
-          let res = self.call_func(func_call);
-          if res.is_err() {
-            return Err(res.err().unwrap());
-          };
-          match res.unwrap() {
+          match self.call_func(func_call)? {
             RetVal::Void => return Err(Error::RuntimeError(format!(
               "expect phrase, but found void",
             ))),
@@ -149,36 +115,14 @@ impl Interpreter {
 
   /// 翻译右值表达式
   pub fn interpret_asgn_rval(&mut self, asgn_rval: &AsgnRVal) -> Result<RetVal, Error> {
-    match asgn_rval {
-      AsgnRVal::Expr( expr) => self.calc_expr(expr),
-      AsgnRVal::Note( note  ) => {
-        let res = self.interpret_note(note);
-        if res.is_err() {
-          return Err(res.err().unwrap());
-        }
-        Ok(RetVal::Value(Value::Note(res.unwrap())))
-      },
-      AsgnRVal::Measure( measure  ) => {
-        let res = self.interpret_measure(measure);
-        if res.is_err() {
-          return Err(res.err().unwrap());
-        }
-        Ok(RetVal::Value(Value::Measure(res.unwrap())))
-      },
-      AsgnRVal::Phrase( phrase  ) => {
-        let res = self.interpret_phrase(phrase);
-        if res.is_err() {
-          return Err(res.err().unwrap());
-        }
-        Ok(RetVal::Value(Value::Phrase(res.unwrap())))
-      },
-      AsgnRVal::Track( track  ) => {
-        let res = self.interpret_track(track);
-        if res.is_err() {
-          return Err(res.err().unwrap());
-        }
-        Ok(RetVal::Value(Value::Track(res.unwrap())))
+    Ok(RetVal::Value(
+      match asgn_rval {
+        AsgnRVal::Expr( expr) => return self.calc_expr(expr),
+        AsgnRVal::Note( note  ) => Value::Note(self.interpret_note(note)?),
+        AsgnRVal::Measure( measure  ) => Value::Measure(self.interpret_measure(measure)?),
+        AsgnRVal::Phrase( phrase  ) => Value::Phrase(self.interpret_phrase(phrase)?),
+        AsgnRVal::Track( track  ) => Value::Track(self.interpret_track(track)?)
       }
-    }
+    ))
   }
 }

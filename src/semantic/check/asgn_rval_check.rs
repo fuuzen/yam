@@ -6,6 +6,7 @@ use crate::ast::stmt::AsgnRVal;
 use crate::ast::track::Track;
 use crate::ast::val::BType;
 use crate::error::Error;
+use crate::semantic::check::expr_check::type_check;
 
 use super::Analyzer;
 
@@ -13,16 +14,10 @@ use super::Analyzer;
 impl Analyzer {
   pub fn note_check(&mut self, note: &Note) -> Result<(), Error> {
     if note.len.is_some() {
-      let res = self.expr_check(note.len.as_ref().unwrap(), Some(BType::Int));
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
+      self.expr_check(note.len.as_ref().unwrap(), Some(BType::Int))?;
     }
     for expr in &note.notes {
-      let res = self.expr_check(expr, Some(BType::Int));
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
+      self.expr_check(expr, Some(BType::Int))?;
     }
     Ok(())
   }
@@ -46,17 +41,17 @@ impl Analyzer {
 
           let ret_type = lval.rval.borrow().as_ref().unwrap().get_btype();
           if ret_type != BType::Measure {
-            return Err(Error::SemanticError(format!("expect measure, but found {ret_type}", )));
+            return Err(Error::SemanticError(format!("expect measure, but found {ret_type}")));
           }
         },
         MeasureRVal::FuncCall( func_call ) => {
           let ret_type = self.func_call_check(func_call)?;
 
           match ret_type {
-            FuncType::Void => return Err(Error::SemanticError(format!("expect measure, but found void", ))),
+            FuncType::Void => return Err(Error::SemanticError(format!("expect measure, but found void"))),
             FuncType::BType( ret_type ) => {
               if ret_type != BType::Measure {
-                return Err(Error::SemanticError(format!("expect measure, but found {ret_type}", )));
+                return Err(Error::SemanticError(format!("expect measure, but found {ret_type}")));
               }
             }
           }
@@ -75,7 +70,7 @@ impl Analyzer {
 
           let ret_type = lval.rval.borrow().as_ref().unwrap().get_btype();
           if ret_type != BType::Phrase {
-            return Err(Error::SemanticError(format!("expect phrase, but found {ret_type}", )));
+            return Err(Error::SemanticError(format!("expect phrase, but found {ret_type}")));
           }
         },
         PhraseRVal::FuncCall( func_call ) => {
@@ -85,7 +80,7 @@ impl Analyzer {
             FuncType::Void => return Err(Error::SemanticError(format!("expect phrase, but found void", ))),
             FuncType::BType( ret_type ) => {
               if ret_type != BType::Phrase {
-                return Err(Error::SemanticError(format!("expect phrase, but found {ret_type}", )));
+                return Err(Error::SemanticError(format!("expect phrase, but found {ret_type}")));
               }
             }
           }
@@ -96,33 +91,28 @@ impl Analyzer {
   }
 
   pub fn asgn_rval_check(&mut self, asgn_rval: &AsgnRVal, expect_type: BType) -> Result<(), Error> {
-    match asgn_rval {
-      AsgnRVal::Expr( expr ) => self.expr_check(expr, Some(expect_type))?,
+    let ret_type = match asgn_rval {
+      AsgnRVal::Expr( expr ) => {
+        self.expr_check(expr, Some(expect_type))?;
+        BType::Int
+      }
       AsgnRVal::Note( note ) => {
-        if expect_type != BType::Note {
-          return Err(Error::SemanticError(format!("expect {expect_type}, but found note")));
-        }
         self.note_check(note)?;
+        BType::Note
       }
       AsgnRVal::Measure( measure ) => {
-        if expect_type != BType::Measure {
-          return Err(Error::SemanticError(format!("expect {expect_type}, but found measure")));
-        }
         self.measure_check(measure)?;
+        BType::Measure
       }
       AsgnRVal::Phrase(phrase ) => {
-        if expect_type != BType::Phrase {
-          return Err(Error::SemanticError(format!("expect {expect_type}, but found phrase")));
-        }
         self.phrase_check(phrase)?;
+        BType::Phrase
       }
       AsgnRVal::Track( track ) => {
-        if expect_type != BType::Track {
-          return Err(Error::SemanticError(format!("expect {expect_type}, but found track")));
-        }
         self.track_check(track)?;
+        BType::Track
       }
-    }
-    Ok(())
+    };
+    type_check(ret_type, expect_type)
   }
 }

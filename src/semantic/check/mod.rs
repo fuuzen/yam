@@ -17,16 +17,9 @@ impl Analyzer {
   /// 以 comp_unit 为单位进行语义检查。
   pub fn check(&mut self, comp_unit: &CompUnit) -> Result<(), Error> {
     // 进行 Block 为单位的语义检查
-    let mut res = self.global_block_check(comp_unit.block.clone());
-    if res.is_err() {
-      return Err(res.err().unwrap());
-    }
+    self.global_block_check(comp_unit.block.clone())?;
     
     // 对 Score 进行语义检查
-    res = self.score_check(&comp_unit.score);
-    if res.is_err() {
-      return Err(res.err().unwrap());
-    }
-    Ok(())
+    self.score_check(&comp_unit.score)
   }
 }

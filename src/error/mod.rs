@@ -1,4 +1,5 @@
 use std::fmt;
+use std::io;
 
 #[derive(Debug, Clone)]
 pub enum Error {
@@ -16,5 +17,17 @@ impl fmt::Display for Error {
       Error::RuntimeError(msg) => write!(f, "Runtime Error: {}", msg),
       Error::InternalError(msg) => write!(f, "Internal Error: {}", msg),
     }
+  }
+}
+
+impl From<Error> for io::Error {
+  fn from(err: Error) -> io::Error {
+    let error_message = match err {
+      Error::ParseError(s) => format!("Parse error: {}", s),
+      Error::SemanticError(s) => format!("Semantic error: {}", s),
+      Error::RuntimeError(s) => format!("Runtime error: {}", s),
+      Error::InternalError(s) => format!("Internal error: {}", s),
+    };
+    io::Error::new(io::ErrorKind::Other, error_message)
   }
 }

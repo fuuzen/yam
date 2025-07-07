@@ -13,11 +13,7 @@ impl Analyzer {
     
     let scope = self.get_current_scope();
 
-    let mut res_func_def = scope.func_call_check(func_call);
-    if res_func_def.is_err() {
-      return Err(res_func_def.err().unwrap());
-    }
-    let mut func_def_ = res_func_def.unwrap();
+    let mut func_def_ = scope.func_call_check(func_call)?;
     
     while func_def_.is_none() {
       let block = self.get_current_block();
@@ -30,33 +26,21 @@ impl Analyzer {
       let parent_id = parent_id_.unwrap();
       
       // 进入父级 Block
-      let res = self.set_current_block(parent_id);
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
-
-      res_func_def = self.get_current_scope().func_call_check(func_call);
-      if res_func_def.is_err() {
-        return Err(res_func_def.err().unwrap());
-      }
-      func_def_ = res_func_def.unwrap();
+      self.set_current_block(parent_id)?;
+      
+      func_def_ = scope.func_call_check(func_call)?;
     }
 
     // 恢复当前 Block Id
-    let mut res = self.set_current_block(cur_block_id);
-    if res.is_err() {
-      return Err(res.err().unwrap());
-    }
+    self.set_current_block(cur_block_id)?;
 
     let len = func_def_.clone().unwrap().func_fparams.len();
     let fparams = &func_def_.clone().unwrap().func_fparams;
+
     for i in 0..len {
       let expect_type = fparams[i].rval.get_btype();
       let asgn_rval = &func_call.func_rparams[i];
-      res = self.asgn_rval_check(&asgn_rval, expect_type);
-      if res.is_err() {
-        return Err(res.err().unwrap());
-      }
+      self.asgn_rval_check(&asgn_rval, expect_type)?;
     }
 
     Ok(func_def_.clone().unwrap().func_type)
@@ -68,10 +52,7 @@ impl Analyzer {
     let scope = self.get_current_scope();
 
     // 检查当前作用域能否定义该函数
-    let res = scope.func_def(func_def.clone());
-    if res.is_err() {
-      return Err(res.err().unwrap());
-    }
+    scope.func_def(func_def.clone())?;
 
     self.func_block_check(func_def)
   }
@@ -103,10 +84,7 @@ impl Analyzer {
           return Err(Error::SemanticError(format!("'return' should return type {}", btype)));
         }
 
-        let res = self.expr_check(expr_.as_ref().unwrap(), Some(*btype));
-        if res.is_err() {
-          return Err(res.err().unwrap());
-        }
+        self.expr_check(expr_.as_ref().unwrap(), Some(*btype))?;
       },
     }
     Ok(())
